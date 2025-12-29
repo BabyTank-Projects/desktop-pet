@@ -1,9 +1,10 @@
-name: Build Desktop Pet EXE
+name: Build and Release Desktop Pet
 
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
+    tags:
+      - 'v*'  # Triggers on version tags like v1.0, v1.1, etc.
+  workflow_dispatch:  # Manual trigger
 
 jobs:
   build:
@@ -27,8 +28,39 @@ jobs:
       run: |
         pyinstaller --onefile --windowed --name=DesktopPet desktop_pet.py
     
-    - name: Upload EXE
-      uses: actions/upload-artifact@v4
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        name: DesktopPet-Windows
-        path: dist/DesktopPet.exe
+        tag_name: ${{ github.ref_name }}
+        release_name: Desktop Pet ${{ github.ref_name }}
+        body: |
+          ## Download Desktop Pet
+          
+          Click the file below to download the latest version!
+          
+          **No Python installation required** - just download and run!
+          
+          ### What's New
+          - Bug fixes and improvements
+          
+          ### Installation
+          1. Download `DesktopPet.exe`
+          2. Double-click to run
+          3. Enjoy your desktop pet!
+          
+          **Note:** Windows may show a security warning. Click "More info" → "Run anyway"
+        draft: false
+        prerelease: false
+    
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./dist/DesktopPet.exe
+        asset_name: DesktopPet.exe
+        asset_content_type: application/octet-stream
