@@ -28,10 +28,10 @@ class DesktopPet:
         self.dragging = False
         
         # File to store custom shortcuts and settings
-        # Get the directory where the script is located
-        self.script_dir = os.path.dirname(os.path.abspath(__file__))
-        self.shortcuts_file = os.path.join(self.script_dir, 'desktop_pet_shortcuts.json')
-        self.settings_file = os.path.join(self.script_dir, 'desktop_pet_settings.json')
+        # Use AppData folder for persistent storage
+        self.app_data_dir = self.get_app_data_directory()
+        self.shortcuts_file = os.path.join(self.app_data_dir, 'desktop_pet_shortcuts.json')
+        self.settings_file = os.path.join(self.app_data_dir, 'desktop_pet_settings.json')
         self.custom_shortcuts = []
         self.stay_on_desktop = tk.BooleanVar(value=False)
         self.custom_image_path = None
@@ -67,6 +67,27 @@ class DesktopPet:
         self.animate()
         
         self.root.mainloop()
+    
+    def get_app_data_directory(self):
+        """Get the appropriate directory for storing app data"""
+        system = platform.system()
+        
+        if system == 'Windows':
+            # Use AppData\Roaming on Windows
+            app_data = os.path.join(os.environ.get('APPDATA', ''), 'DesktopPet')
+        elif system == 'Darwin':  # macOS
+            # Use ~/Library/Application Support on macOS
+            app_data = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', 'DesktopPet')
+        else:  # Linux
+            # Use ~/.local/share on Linux
+            app_data = os.path.join(os.path.expanduser('~'), '.local', 'share', 'DesktopPet')
+        
+        # Create directory if it doesn't exist
+        if not os.path.exists(app_data):
+            os.makedirs(app_data)
+            print(f"Created app data directory: {app_data}")
+        
+        return app_data
     
     def load_gif(self):
         """Load the animated GIF from URL or custom path and resize it"""
@@ -254,11 +275,27 @@ class DesktopPet:
         )
         
         self.menu.add_separator()
+        self.menu.add_command(label="  📂 Open Settings Folder", command=self.open_settings_folder)
         self.menu.add_command(label="  ❓ Help", command=self.show_help)
-        self.menu.add_command(label="  🐛 Debug Console", command=self.toggle_console)
+        self.menu.add_command(label="  🛠 Debug Console", command=self.toggle_console)
         self.menu.add_command(label="  🚀 Add to Startup", command=self.add_to_startup)
         self.menu.add_command(label="  ❌ Exit", command=self.root.quit)
     
+    def open_settings_folder(self):
+        """Open the folder where settings are stored"""
+        system = platform.system()
+        try:
+            if system == 'Windows':
+                os.startfile(self.app_data_dir)
+            elif system == 'Darwin':  # macOS
+                subprocess.Popen(['open', self.app_data_dir])
+            else:  # Linux
+                subprocess.Popen(['xdg-open', self.app_data_dir])
+            self.log_to_console(f"Opening settings folder: {self.app_data_dir}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not open settings folder:\n\n{e}")
+            self.log_to_console(f"Error opening settings folder: {e}")
+            
     def show_menu(self, event):
         """Show context menu on right-click"""
         try:
@@ -625,7 +662,7 @@ class DesktopPet:
                 "• LEFT CLICK + DRAG: Move the pet anywhere on your screen",
                 "• RIGHT CLICK: Open the menu with all options"
             ]),
-            ("📝 MENU FUNCTIONS", [
+            ("📋 MENU FUNCTIONS", [
                 "Notepad: Opens Windows Notepad for quick notes",
                 "Calculator: Opens the system calculator",
                 "Downloads: Opens your Downloads folder",
@@ -635,6 +672,7 @@ class DesktopPet:
                 "🖼️ Change Pet Image/GIF: Replace the pet with your own image",
                 "",
                 "📌 Stay on Desktop Only: When checked, pet stays behind windows",
+                "📂 Open Settings Folder: Opens where your settings are saved",
                 "❓ Help: Shows this help guide",
                 "❌ Exit: Close the desktop pet"
             ]),
@@ -675,10 +713,15 @@ class DesktopPet:
                 "• You can use any GIF or image as your pet!",
                 "• Custom shortcuts support URLs, files, folders, and commands"
             ]),
-            ("📂 FILES CREATED", [
-                "The pet creates these files in its folder:",
+            ("📂 FILES LOCATION", [
+                f"Your settings are saved in:",
+                f"{self.app_data_dir}",
+                "",
+                "Files created:",
                 "• desktop_pet_shortcuts.json (your shortcuts)",
-                "• desktop_pet_settings.json (your preferences)"
+                "• desktop_pet_settings.json (your preferences)",
+                "",
+                "Click 'Open Settings Folder' in the menu to view them!"
             ]),
             ("🎨 CUSTOMIZATION", [
                 "Want a different pet? Click 'Change Pet Image/GIF' and",
@@ -782,7 +825,7 @@ class DesktopPet:
         
         title_label = tk.Label(
             title_frame,
-            text="🐛 Debug Console",
+            text="🛠 Debug Console",
             bg='#00aa00',
             fg='white',
             font=('Segoe UI', 14, 'bold')
@@ -909,8 +952,7 @@ if __name__ == "__main__":
     
     # Log startup message
     pet.log_to_console("Desktop Pet started successfully")
-    pet.log_to_console(f"Script directory: {pet.script_dir}")
+    pet.log_to_console(f"Settings directory: {pet.app_data_dir}")
     pet.log_to_console(f"Loaded {len(pet.custom_shortcuts)} custom shortcuts")
     
-
-    pet.root.mainloop()
+    pet.root.mainloop()       
