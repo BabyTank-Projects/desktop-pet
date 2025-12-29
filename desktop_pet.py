@@ -912,4 +912,5 @@ if __name__ == "__main__":
     pet.log_to_console(f"Script directory: {pet.script_dir}")
     pet.log_to_console(f"Loaded {len(pet.custom_shortcuts)} custom shortcuts")
     
+
     pet.root.mainloop()
