@@ -1,39 +1,32 @@
 # Desktop Pet 🐾
 
-A customizable animated desktop pet that lives on your screen! Drag it around, add shortcuts to your favorite apps, and personalize it with your own images.
+[![Build Status](https://github.com/YOUR_USERNAME/desktop-pet/workflows/Build%20and%20Release%20Desktop%20Pet/badge.svg)](https://github.com/YOUR_USERNAME/desktop-pet/actions)
+
+A customizable animated desktop pet that lives on your screen!
+
+## ⬇️ Download (No Installation Required!)
+
+**Windows Users - One-Click Install:**
+
+1. Go to [**Releases**](https://github.com/YOUR_USERNAME/desktop-pet/releases/latest)
+2. Download `DesktopPet.exe`
+3. Double-click and enjoy! 🎉
+
+**That's it!** No Python, no dependencies, just download and run.
+
+> **Note:** Windows Defender might show a warning (this is normal for new apps). Click "More info" → "Run anyway"
+
+---
 
 ## Features
 
-- 🎮 **Draggable** - Click and drag your pet anywhere on screen
-- 📁 **Quick Access** - Built-in shortcuts for Notepad, Calculator, Downloads
-- ➕ **Custom Shortcuts** - Add your own apps, folders, websites
-- 🖼️ **Customizable** - Use any GIF or image as your pet
-- 📌 **Desktop Mode** - Option to keep pet behind windows
-- 🚀 **Auto-Start** - Add to Windows startup
+- 🎮 Drag your pet anywhere on screen
+- 📁 Quick access to apps and folders
+- ➕ Add custom shortcuts
+- 🖼️ Use your own images/GIFs
+- 📌 Stay on desktop mode
+- 🚀 Auto-start on boot
 
-## Installation
+## For Developers
 
-1. Download the files
-2. Install required packages:
-```bash
-   pip install pillow requests
-```
-3. Run the application:
-```bash
-   python desktop_pet.py
-```
-
-## Usage
-
-- **LEFT CLICK + DRAG**: Move the pet around your screen
-- **RIGHT CLICK**: Open the menu with all options
-
-## Requirements
-
-- Python 3.6+
-- PIL (Pillow)
-- requests
-
-## License
-
-MIT License - Feel free to modify and share!
+Want to modify the code? See [Development Guide](DEVELOPMENT.md)
