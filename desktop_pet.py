@@ -236,19 +236,22 @@ class DesktopPet:
             print(f"Error saving shortcuts: {e}")
     
     def create_menu(self):
-        """Create the context menu"""
+        """Create the context menu with modern styling"""
         self.menu = TkMenu(
             self.root, 
             tearoff=0, 
-            bg='#2a2a2a', 
-            fg='#e0e0e0', 
-            activebackground='#ff6600', 
-            activeforeground='white',
+            bg='#1e1e1e',  # Darker, more modern background
+            fg='#ffffff',  # Pure white text
+            activebackground='#0078d4',  # Windows 11 blue
+            activeforeground='#ffffff',
             relief='flat', 
             bd=0,
             font=('Segoe UI', 10),
             activeborderwidth=0
         )
+        
+        # Add a subtle border effect
+        self.menu.configure(borderwidth=1, relief='solid')
         
         self.menu.add_command(label="  📝 Notepad", command=self.open_notepad)
         self.menu.add_command(label="  🔢 Calculator", command=self.open_calculator)
@@ -271,7 +274,8 @@ class DesktopPet:
         self.menu.add_checkbutton(
             label="  📌 Stay on Desktop Only", 
             variable=self.stay_on_desktop,
-            command=self.toggle_stay_on_desktop
+            command=self.toggle_stay_on_desktop,
+            selectcolor='#1e1e1e'  # Match background when selected
         )
         
         self.menu.add_separator()
@@ -279,7 +283,28 @@ class DesktopPet:
         self.menu.add_command(label="  ❓ Help", command=self.show_help)
         self.menu.add_command(label="  🛠 Debug Console", command=self.toggle_console)
         self.menu.add_command(label="  🚀 Add to Startup", command=self.add_to_startup)
-        self.menu.add_command(label="  ❌ Exit", command=self.root.quit)
+        self.menu.add_separator()
+        self.menu.add_command(label="  ❌ Exit", command=self.root.quit, foreground='#ff4444')
+
+    def show_menu(self, event):
+        """Show context menu on right-click"""
+        
+        # Create a transparent overlay to catch right-clicks
+        def block_right_clicks(e):
+            # Just consume the event, don't do anything
+            return "break"
+        
+        # Bind to the menu's toplevel window
+        try:
+            self.menu.tk_popup(event.x_root, event.y_root)
+            
+            # Get the menu's internal window and block right-clicks on it
+            menu_window = self.menu.winfo_toplevel()
+            menu_window.bind("<Button-3>", block_right_clicks)
+            menu_window.bind("<ButtonRelease-3>", block_right_clicks)
+            
+        finally:
+            self.menu.grab_release()
     
     def open_settings_folder(self):
         """Open the folder where settings are stored"""
@@ -301,6 +326,14 @@ class DesktopPet:
         try:
             # Show menu at cursor position
             self.menu.tk_popup(event.x_root, event.y_root)
+            
+            # Bind right-click to do nothing on all menu items
+            def block_right_click(e):
+                return "break"
+            
+            self.menu.bind("<Button-3>", block_right_click)
+            self.menu.bind("<ButtonRelease-3>", block_right_click)
+            
         finally:
             self.menu.grab_release()
     
@@ -389,7 +422,7 @@ class DesktopPet:
                     "Examples:\n" +
                     "• C:\\Program Files\\MyApp\\app.exe\n" +
                     "• https://www.google.com\n" +
-                    "• spotify (for installed apps)"
+                    "• discord (for installed apps)"
                 )
         
         if path:
@@ -408,83 +441,109 @@ class DesktopPet:
             print(f"Added custom shortcut: {name} -> {path}")
     
     def delete_custom_shortcut(self):
-        """Delete a custom shortcut"""
+        """Delete a custom shortcut with modern UI"""
         if not self.custom_shortcuts:
             messagebox.showinfo("No Shortcuts", "You don't have any custom shortcuts to delete.")
             return
         
         # Create a modern dialog to select which shortcut to delete
         delete_window = tk.Toplevel(self.root)
-        delete_window.title("Delete Custom Shortcut")
-        delete_window.geometry("500x400")
-        delete_window.configure(bg='#1a1a1a')
+        delete_window.title("Delete Shortcut")
+        delete_window.geometry("450x500")
+        delete_window.configure(bg='#f5f5f5')
         delete_window.attributes('-topmost', True)
-        delete_window.attributes('-alpha', 0.95)
-        delete_window.resizable(True, True)
+        delete_window.resizable(False, False)
         
-        # Main container with padding
-        main_container = tk.Frame(delete_window, bg='#1a1a1a')
-        main_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        # Main container
+        main_container = tk.Frame(delete_window, bg='#f5f5f5')
+        main_container.pack(fill=tk.BOTH, expand=True)
         
-        # Title with colored background
-        title_frame = tk.Frame(main_container, bg='#ff4444', height=50)
-        title_frame.pack(fill=tk.X, pady=(0, 15))
-        title_frame.pack_propagate(False)
+        # Modern header
+        header_frame = tk.Frame(main_container, bg='#ffffff', height=80)
+        header_frame.pack(fill=tk.X)
+        header_frame.pack_propagate(False)
+        
+        # Header content
+        header_content = tk.Frame(header_frame, bg='#ffffff')
+        header_content.place(relx=0.5, rely=0.5, anchor='center')
         
         title_label = tk.Label(
-            title_frame,
-            text="Select a shortcut to delete:",
-            bg='#ff4444',
-            fg='white',
-            font=('Segoe UI', 14, 'bold')
+            header_content,
+            text="Delete Shortcut",
+            bg='#ffffff',
+            fg='#1e1e1e',
+            font=('Segoe UI', 20, 'bold')
         )
-        title_label.place(relx=0.5, rely=0.5, anchor='center')
+        title_label.pack()
         
-        # Listbox container with border
-        listbox_container = tk.Frame(main_container, bg='#444444', highlightthickness=1, 
-                                     highlightbackground='#555555')
-        listbox_container.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
+        subtitle_label = tk.Label(
+            header_content,
+            text="Select a shortcut to remove",
+            bg='#ffffff',
+            fg='#666666',
+            font=('Segoe UI', 10)
+        )
+        subtitle_label.pack()
         
-        listbox_frame = tk.Frame(listbox_container, bg='#2a2a2a')
-        listbox_frame.pack(fill=tk.BOTH, expand=True, padx=1, pady=1)
+        # Content area
+        content_frame = tk.Frame(main_container, bg='#f5f5f5')
+        content_frame.pack(fill=tk.BOTH, expand=True, padx=30, pady=20)
         
-        scrollbar = tk.Scrollbar(listbox_frame, bg='#3a3a3a', troughcolor='#2a2a2a', width=12)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        # Listbox with modern styling
+        listbox_frame = tk.Frame(content_frame, bg='#ffffff', highlightthickness=1, 
+                                 highlightbackground='#e0e0e0', highlightcolor='#0078d4')
+        listbox_frame.pack(fill=tk.BOTH, expand=True)
+        
+        scrollbar = tk.Scrollbar(listbox_frame, bg='#f5f5f5', troughcolor='#ffffff', width=14)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y, padx=2, pady=2)
         
         listbox = tk.Listbox(
             listbox_frame,
-            bg='#2a2a2a',
-            fg='#e0e0e0',
+            bg='#ffffff',
+            fg='#1e1e1e',
             font=('Segoe UI', 11),
             selectmode=tk.SINGLE,
             yscrollcommand=scrollbar.set,
             relief=tk.FLAT,
             highlightthickness=0,
-            selectbackground='#ff6600',
-            selectforeground='white',
-            activestyle='none'
+            selectbackground='#e3f2fd',
+            selectforeground='#0078d4',
+            activestyle='none',
+            borderwidth=0
         )
-        listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+        listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=15, pady=15)
         scrollbar.config(command=listbox.yview)
         
-        # Add shortcuts to listbox (names only)
+        # Add shortcuts to listbox with icons
         for shortcut in self.custom_shortcuts:
-            listbox.insert(tk.END, f"  {shortcut['name']}")
+            listbox.insert(tk.END, f"  🔗  {shortcut['name']}")
         
-        # Delete button
+        # Delete function
         def do_delete():
             selection = listbox.curselection()
             if not selection:
-                messagebox.showwarning("No Selection", "Please select a shortcut to delete.")
+                # Modern error styling
+                error_label = tk.Label(
+                    content_frame,
+                    text="⚠️ Please select a shortcut first",
+                    bg='#fff3cd',
+                    fg='#856404',
+                    font=('Segoe UI', 9),
+                    padx=10,
+                    pady=5
+                )
+                error_label.pack(pady=(5, 0))
+                delete_window.after(2000, error_label.destroy)
                 return
             
             index = selection[0]
             deleted_shortcut = self.custom_shortcuts[index]
             
-            # Confirm deletion
+            # Modern confirmation
             confirm = messagebox.askyesno(
                 "Confirm Delete",
-                f"Are you sure you want to delete:\n\n{deleted_shortcut['name']}?"
+                f"Delete '{deleted_shortcut['name']}'?",
+                icon='warning'
             )
             
             if confirm:
@@ -496,45 +555,82 @@ class DesktopPet:
                 self.create_menu()
                 
                 delete_window.destroy()
-                messagebox.showinfo("Deleted", f"Deleted shortcut: {deleted_shortcut['name']}")
+                
+                # Show success message
+                messagebox.showinfo("✓ Deleted", f"Removed {deleted_shortcut['name']}")
                 print(f"Deleted custom shortcut: {deleted_shortcut['name']}")
         
-        button_frame = tk.Frame(main_container, bg='#1a1a1a')
-        button_frame.pack()
+        # Modern button frame
+        button_frame = tk.Frame(main_container, bg='#f5f5f5', height=70)
+        button_frame.pack(fill=tk.X, padx=30, pady=(0, 20))
+        button_frame.pack_propagate(False)
         
+        # Center the buttons
+        button_container = tk.Frame(button_frame, bg='#f5f5f5')
+        button_container.place(relx=0.5, rely=0.5, anchor='center')
+        
+        # Modern delete button
         delete_btn = tk.Button(
-            button_frame,
-            text="Delete Selected",
+            button_container,
+            text="Delete",
             command=do_delete,
-            bg='#ff4444',
+            bg='#d32f2f',
             fg='white',
             font=('Segoe UI', 10, 'bold'),
-            padx=25,
-            pady=8,
+            padx=30,
+            pady=10,
             relief=tk.FLAT,
             cursor='hand2',
-            activebackground='#ff6666',
-            activeforeground='white'
+            activebackground='#c62828',
+            activeforeground='white',
+            borderwidth=0
         )
         delete_btn.pack(side=tk.LEFT, padx=5)
         
+        # Hover effect for delete button
+        def on_enter_delete(e):
+            delete_btn['bg'] = '#c62828'
+        
+        def on_leave_delete(e):
+            delete_btn['bg'] = '#d32f2f'
+        
+        delete_btn.bind('<Enter>', on_enter_delete)
+        delete_btn.bind('<Leave>', on_leave_delete)
+        
+        # Modern cancel button
         cancel_btn = tk.Button(
-            button_frame,
+            button_container,
             text="Cancel",
             command=delete_window.destroy,
-            bg='#555555',
-            fg='white',
+            bg='#e0e0e0',
+            fg='#1e1e1e',
             font=('Segoe UI', 10),
-            padx=25,
-            pady=8,
+            padx=30,
+            pady=10,
             relief=tk.FLAT,
             cursor='hand2',
-            activebackground='#777777',
-            activeforeground='white'
+            activebackground='#d0d0d0',
+            activeforeground='#1e1e1e',
+            borderwidth=0
         )
         cancel_btn.pack(side=tk.LEFT, padx=5)
         
-        # Keep window open until manually closed
+        # Hover effect for cancel button
+        def on_enter_cancel(e):
+            cancel_btn['bg'] = '#d0d0d0'
+        
+        def on_leave_cancel(e):
+            cancel_btn['bg'] = '#e0e0e0'
+        
+        cancel_btn.bind('<Enter>', on_enter_cancel)
+        cancel_btn.bind('<Leave>', on_leave_cancel)
+        
+        # Center window on screen
+        delete_window.update_idletasks()
+        x = (delete_window.winfo_screenwidth() // 2) - (delete_window.winfo_width() // 2)
+        y = (delete_window.winfo_screenheight() // 2) - (delete_window.winfo_height() // 2)
+        delete_window.geometry(f"+{x}+{y}")
+        
         delete_window.grab_set()
         delete_window.focus_set()
     
@@ -547,8 +643,11 @@ class DesktopPet:
                 import webbrowser
                 webbrowser.open(path)
                 print(f"Opening URL: {path}")
-            # Check if it's a file or folder
-            elif os.path.exists(path):
+                self.log_to_console(f"Opened URL: {path}")
+                return
+            
+            # Check if it's a file or folder that exists
+            if os.path.exists(path):
                 if system == 'Windows':
                     os.startfile(path)
                 elif system == 'Darwin':
@@ -556,14 +655,68 @@ class DesktopPet:
                 else:
                     subprocess.Popen(['xdg-open', path])
                 print(f"Opening path: {path}")
-            # Try as a command
+                self.log_to_console(f"Opened path: {path}")
+                return
+            
+            # Try as a command/application name
+            if system == 'Windows':
+                # Special handling for common apps
+                app_lower = path.lower().strip()
+                
+                # Discord special handling
+                if app_lower == 'discord':
+                    discord_paths = [
+                        os.path.join(os.environ.get('LOCALAPPDATA', ''), 'Discord', 'Update.exe'),
+                    ]
+                    
+                    for discord_path in discord_paths:
+                        if os.path.exists(discord_path):
+                            # Use Update.exe with the --processStart flag
+                            subprocess.Popen([discord_path, '--processStart', 'Discord.exe'])
+                            print(f"Launching Discord via: {discord_path}")
+                            self.log_to_console(f"Launched Discord")
+                            return
+                
+                # Spotify special handling
+                elif app_lower == 'spotify':
+                    spotify_path = os.path.join(os.environ.get('APPDATA', ''), 'Spotify', 'Spotify.exe')
+                    if os.path.exists(spotify_path):
+                        subprocess.Popen([spotify_path])
+                        print(f"Launching Spotify via: {spotify_path}")
+                        self.log_to_console(f"Launched Spotify")
+                        return
+                
+                # Try multiple methods for other apps
+                try:
+                    # Method 1: Try with shell=True (works for many apps)
+                    subprocess.Popen(path, shell=True)
+                    print(f"Running command with shell: {path}")
+                    self.log_to_console(f"Launched command: {path}")
+                    return
+                except Exception as e1:
+                    print(f"Method 1 (shell) failed: {e1}")
+                    try:
+                        # Method 2: Try as direct command
+                        subprocess.Popen([path])
+                        print(f"Running command: {path}")
+                        self.log_to_console(f"Launched command: {path}")
+                        return
+                    except Exception as e2:
+                        print(f"Method 2 (direct) failed: {e2}")
+                        # If all else fails, raise the last exception
+                        raise e2
             else:
+                # For macOS and Linux
                 subprocess.Popen([path])
                 print(f"Running command: {path}")
+                self.log_to_console(f"Launched command: {path}")
+                
         except Exception as e:
-            messagebox.showerror("Error", f"Could not open: {path}\n\nError: {e}")
+            error_msg = f"Could not open: {path}\n\nError: {e}\n\nTip: For installed apps, try using the full path to the .exe file."
+            messagebox.showerror("Error", error_msg)
             print(f"Error opening custom path: {e}")
-    
+            self.log_to_console(f"Error opening {path}: {e}")
+            
     def change_pet_image(self):
         """Change the pet image/GIF"""
         path = filedialog.askopenfilename(
@@ -599,7 +752,7 @@ class DesktopPet:
         """Show help dialog"""
         help_window = tk.Toplevel(self.root)
         help_window.title("Desktop Pet - Help")
-        help_window.geometry("600x650")
+        help_window.geometry("600x700")
         help_window.configure(bg='#1a1a1a')
         help_window.attributes('-topmost', True)
         help_window.attributes('-alpha', 0.95)  # Slight transparency
@@ -684,10 +837,52 @@ class DesktopPet:
                 "   • FOLDER: Select a folder to open",
                 "   • MANUAL: Enter a URL or command",
                 "",
-                "Examples:",
-                "   • File: C:\\Program Files\\MyApp\\app.exe",
-                "   • URL: https://www.google.com",
-                "   • Command: spotify, discord, chrome"
+                "THREE WAYS TO ADD SHORTCUTS:",
+                "",
+                "METHOD 1 - Simple Commands (Easiest):",
+                "Just type the app name in lowercase:",
+                "   • discord ← Special handling, works perfectly!",
+                "   • spotify ← Special handling, works perfectly!",
+                "   • notepad ← Windows built-in",
+                "   • calc ← Windows built-in",
+                "   • mspaint ← Windows built-in",
+                "   • chrome ← Usually works if installed",
+                "",
+                "METHOD 2 - Full File Path (Most Reliable):",
+                "Browse for the .exe file or enter full path:",
+                "   • C:\\Program Files\\MyApp\\app.exe",
+                "   • C:\\Games\\MyGame\\game.exe",
+                "",
+                "METHOD 3 - URLs:",
+                "Enter any website address:",
+                "   • https://www.google.com",
+                "   • https://www.youtube.com",
+                "",
+                "💡 TIP: Try the simple command first! If it doesn't work,",
+                "delete it and add again using the full file path."
+            ]),
+            ("⚠️ TROUBLESHOOTING SHORTCUTS", [
+                "If a shortcut doesn't work:",
+                "",
+                "1. Check the Debug Console (in menu) for error messages",
+                "2. Delete the shortcut and try adding it again",
+                "3. For Discord & Spotify: Use lowercase commands:",
+                "   • discord (not Discord or DISCORD)",
+                "   • spotify (not Spotify or SPOTIFY)",
+                "4. For other apps: Use the full path to the .exe file",
+                "",
+                "Common app locations to copy/paste:",
+                "• Discord: Already handled! Just type 'discord'",
+                "• Spotify: Already handled! Just type 'spotify'",
+                "• Chrome: C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+                "• Firefox: C:\\Program Files\\Mozilla Firefox\\firefox.exe",
+                "• Steam: C:\\Program Files (x86)\\Steam\\steam.exe",
+                "• VS Code: C:\\Users\\YourName\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe",
+                "",
+                "To find any app's .exe location:",
+                "1. Find the app shortcut on desktop or Start menu",
+                "2. Right-click it → 'Open file location'",
+                "3. Copy the full path"
             ]),
             ("⚠️ CLEANING UP YOUR DESKTOP", [
                 "If you want to remove icons from your desktop:",
@@ -711,7 +906,9 @@ class DesktopPet:
                 "• Shortcuts are saved even after closing the app",
                 "• Use 'Stay on Desktop Only' to keep it in the background",
                 "• You can use any GIF or image as your pet!",
-                "• Custom shortcuts support URLs, files, folders, and commands"
+                "• Custom shortcuts support URLs, files, folders, and commands",
+                "• Use the Debug Console to see what's happening",
+                "• discord and spotify have special handling - just type the name!"
             ]),
             ("📂 FILES LOCATION", [
                 f"Your settings are saved in:",
