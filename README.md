@@ -1,7 +1,5 @@
 # Desktop Pet 🐾
 
-[![Build Status](https://github.com/YOUR_USERNAME/desktop-pet/workflows/Build%20and%20Release%20Desktop%20Pet/badge.svg)](https://github.com/YOUR_USERNAME/desktop-pet/actions)
-
 A customizable animated desktop pet that lives on your screen!
 
 ## ⬇️ Download (No Installation Required!)
@@ -30,3 +28,4 @@ A customizable animated desktop pet that lives on your screen!
 ## For Developers
 
 Want to modify the code? See [Development Guide](DEVELOPMENT.md)
+
