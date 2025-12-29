@@ -1,9 +1,8 @@
 name: Build and Release Desktop Pet
 
 on:
-  push:
-    tags:
-      - 'v*'  # Only runs on version tags like v1.0
+  release:
+    types: [created]
   workflow_dispatch:
 
 jobs:
@@ -28,20 +27,9 @@ jobs:
       run: |
         pyinstaller --onefile --windowed --name=DesktopPet desktop_pet.py
     
-    - name: Create Release
+    - name: Upload Release Asset
       uses: softprops/action-gh-release@v1
       with:
         files: ./dist/DesktopPet.exe
-        body: |
-          ## Download Desktop Pet
-          
-          **No Python installation required** - just download and run!
-          
-          ### Installation
-          1. Download `DesktopPet.exe` below
-          2. Double-click to run
-          3. Enjoy your desktop pet!
-          
-          **Note:** Windows may show a security warning. Click "More info" → "Run anyway"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
