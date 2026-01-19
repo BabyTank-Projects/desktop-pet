@@ -28,15 +28,11 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pyinstaller pillow requests certifi
+        pip install pyinstaller pillow requests certifi urllib3
     
-    - name: Generate spec file
+    - name: Build EXE with SSL bypass
       run: |
-        python -c "import certifi; print(f'Certifi location: {certifi.where()}')"
-        
-    - name: Build EXE with SSL support
-      run: |
-        pyinstaller DesktopPet.spec
+        pyinstaller --onefile --windowed --name=DesktopPet --hidden-import=certifi --hidden-import=urllib3 desktop_pet.py
     
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
