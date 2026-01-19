@@ -17,9 +17,8 @@ class DesktopPet:
         # Make window transparent and always on top
         self.root.attributes('-transparentcolor', 'black')
         self.root.attributes('-topmost', True)
-        self.root.overrideredirect(True)  # Remove window decorations
+        self.root.overrideredirect(True)
         
-        # Set initial position - will resize after loading image
         self.root.geometry('150x150+100+100')
         self.root.configure(bg='black')
         
@@ -28,7 +27,7 @@ class DesktopPet:
         self.offset_y = 0
         self.dragging = False
         
-        # File to store custom shortcuts and settings
+        # File storage paths
         self.app_data_dir = self.get_app_data_directory()
         self.shortcuts_file = os.path.join(self.app_data_dir, 'desktop_pet_shortcuts.json')
         self.urls_file = os.path.join(self.app_data_dir, 'desktop_pet_urls.json')
@@ -41,8 +40,6 @@ class DesktopPet:
         # Console window
         self.console_window = None
         self.console_text = None
-        
-        # Console buffer
         self.console_buffer = []
         
         # Load settings
@@ -51,7 +48,7 @@ class DesktopPet:
         # Load the animated GIF
         self.load_gif()
         
-        # Create label to display the image
+        # Create label
         self.label = tk.Label(self.root, bg='black', bd=0)
         self.label.pack()
         
@@ -83,44 +80,62 @@ class DesktopPet:
         
         if not os.path.exists(app_data):
             os.makedirs(app_data)
-            print(f"Created app data directory: {app_data}")
         
         return app_data
     
     def load_gif(self):
-        """Load the animated GIF from URL or custom path and resize it"""
+        """Load the animated GIF or static image"""
         try:
             if self.custom_image_path and os.path.exists(self.custom_image_path):
-                gif = Image.open(self.custom_image_path)
+                img = Image.open(self.custom_image_path)
             else:
                 url = "https://oldschool.runescape.wiki/images/thumb/Infernal_cape_detail_animated.gif/100px-Infernal_cape_detail_animated.gif?35cc2"
                 response = requests.get(url)
                 gif_data = BytesIO(response.content)
-                gif = Image.open(gif_data)
+                img = Image.open(gif_data)
             
             self.frames = []
-            original_width, original_height = gif.size
+            original_width, original_height = img.size
             scale_factor = 0.6
             new_width = int(original_width * scale_factor)
             new_height = int(original_height * scale_factor)
             
+            # Check if it's an animated image
+            is_animated = False
             try:
-                while True:
-                    frame = gif.copy()
-                    frame = frame.convert('RGBA')
-                    frame = frame.resize((new_width, new_height), Image.Resampling.LANCZOS)
-                    self.frames.append(ImageTk.PhotoImage(frame))
-                    gif.seek(len(self.frames))
+                img.seek(1)
+                is_animated = True
+                img.seek(0)
             except EOFError:
-                pass
+                is_animated = False
+            
+            if is_animated:
+                # Load all frames for animated images
+                try:
+                    while True:
+                        frame = img.copy()
+                        frame = frame.convert('RGBA')
+                        frame = frame.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                        self.frames.append(ImageTk.PhotoImage(frame))
+                        img.seek(len(self.frames))
+                except EOFError:
+                    pass
+            else:
+                # Load single frame for static images
+                frame = img.convert('RGBA')
+                frame = frame.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                self.frames.append(ImageTk.PhotoImage(frame))
             
             if self.frames:
                 self.root.geometry(f'{new_width}x{new_height}+100+100')
+                self.current_frame = 0  # Reset frame counter
                 
         except Exception as e:
-            print(f"Error loading GIF: {e}")
+            print(f"Error loading image: {e}")
+            self.log_to_console(f"Error loading image: {e}")
             placeholder = Image.new('RGBA', (80, 80), (255, 0, 0, 255))
             self.frames = [ImageTk.PhotoImage(placeholder)]
+            self.current_frame = 0
     
     def animate(self):
         """Animate the GIF frames"""
@@ -130,37 +145,33 @@ class DesktopPet:
         self.root.after(100, self.animate)
     
     def start_drag(self, event):
-        """Start dragging the window"""
         self.dragging = True
         self.offset_x = event.x
         self.offset_y = event.y
     
     def drag(self, event):
-        """Drag the window"""
         if self.dragging:
             x = self.root.winfo_x() + event.x - self.offset_x
             y = self.root.winfo_y() + event.y - self.offset_y
             self.root.geometry(f'+{x}+{y}')
     
     def stop_drag(self, event):
-        """Stop dragging"""
         self.dragging = False
     
     def load_settings(self):
-        """Load settings from JSON file"""
+        """Load settings from JSON"""
         try:
             if os.path.exists(self.settings_file):
                 with open(self.settings_file, 'r') as f:
                     settings = json.load(f)
-                    stay_on_desktop = settings.get('stay_on_desktop', False)
-                    self.stay_on_desktop.set(stay_on_desktop)
+                    self.stay_on_desktop.set(settings.get('stay_on_desktop', False))
                     self.custom_image_path = settings.get('custom_image_path', None)
                     self.update_window_level()
         except Exception as e:
             print(f"Error loading settings: {e}")
     
     def save_settings(self):
-        """Save settings to JSON file"""
+        """Save settings to JSON"""
         try:
             settings = {
                 'stay_on_desktop': self.stay_on_desktop.get(),
@@ -172,22 +183,22 @@ class DesktopPet:
             print(f"Error saving settings: {e}")
     
     def update_window_level(self):
-        """Update whether window stays on top or on desktop only"""
+        """Update window level"""
         if self.stay_on_desktop.get():
             self.root.attributes('-topmost', False)
             self.root.lower()
             self.log_to_console("Pet now stays on desktop only")
         else:
             self.root.attributes('-topmost', True)
-            self.log_to_console("Pet now stays on top of all windows")
+            self.log_to_console("Pet now stays on top")
     
     def toggle_stay_on_desktop(self):
-        """Toggle the stay on desktop setting"""
+        """Toggle stay on desktop"""
         self.update_window_level()
         self.save_settings()
     
     def load_custom_shortcuts(self):
-        """Load custom shortcuts from JSON file"""
+        """Load custom shortcuts"""
         try:
             if os.path.exists(self.shortcuts_file):
                 with open(self.shortcuts_file, 'r') as f:
@@ -199,7 +210,7 @@ class DesktopPet:
             self.custom_shortcuts = []
     
     def load_custom_urls(self):
-        """Load custom URLs from JSON file"""
+        """Load custom URLs"""
         try:
             if os.path.exists(self.urls_file):
                 with open(self.urls_file, 'r') as f:
@@ -211,7 +222,7 @@ class DesktopPet:
             self.custom_urls = []
     
     def save_custom_shortcuts(self):
-        """Save custom shortcuts to JSON file"""
+        """Save custom shortcuts"""
         try:
             with open(self.shortcuts_file, 'w') as f:
                 json.dump(self.custom_shortcuts, f, indent=2)
@@ -219,50 +230,73 @@ class DesktopPet:
             print(f"Error saving shortcuts: {e}")
     
     def save_custom_urls(self):
-        """Save custom URLs to JSON file"""
+        """Save custom URLs"""
         try:
             with open(self.urls_file, 'w') as f:
                 json.dump(self.custom_urls, f, indent=2)
         except Exception as e:
             print(f"Error saving URLs: {e}")
     
+    def recreate_menu(self):
+        """Safely recreate the menu"""
+        try:
+            if hasattr(self, 'menu'):
+                self.menu.delete(0, 'end')
+        except:
+            pass
+        self.create_menu()
+    
     def create_menu(self):
-        """Create the context menu with modern styling and organized submenus"""
         self.menu = TkMenu(
-            self.root, 
-            tearoff=0, 
-            bg='#1e1e1e',
+            self.root,
+            tearoff=0,
+            bg='#3d3d5c',
             fg='#ffffff',
-            activebackground='#0078d4',
+            activebackground='#4d4d6c',
             activeforeground='#ffffff',
-            relief='flat', 
-            bd=0,
+            relief='solid',
+            bd=1,
             font=('Segoe UI', 10),
-            activeborderwidth=0
+            activeborderwidth=0,
+            borderwidth=1
         )
         
+        # Set border color
         self.menu.configure(borderwidth=1, relief='solid')
         
         # Quick Access section
-        self.menu.add_command(label="  📝 Notepad", command=self.open_notepad)
-        self.menu.add_command(label="  🔢 Calculator", command=self.open_calculator)
-        self.menu.add_command(label="  📁 Downloads", command=self.open_downloads)
+        self.menu.add_command(
+            label="  📝 Notepad",
+            command=self.open_notepad,
+            compound='left'
+        )
+        self.menu.add_command(
+            label="  🔢 Calculator",
+            command=self.open_calculator,
+            compound='left'
+        )
+        self.menu.add_command(
+            label="  📂 Downloads",
+            command=self.open_downloads,
+            compound='left'
+        )
+        
         self.menu.add_separator()
         
-        # Load shortcuts and URLs
+        # Load data
         self.load_custom_shortcuts()
         self.load_custom_urls()
         
-        # Custom Apps Submenu
+        # Custom Apps submenu
         self.apps_submenu = TkMenu(
             self.menu,
             tearoff=0,
-            bg='#1e1e1e',
+            bg='#3d3d5c',
             fg='#ffffff',
-            activebackground='#0078d4',
+            activebackground='#4d4d6c',
             activeforeground='#ffffff',
-            relief='flat',
-            bd=0,
+            relief='solid',
+            bd=1,
             font=('Segoe UI', 10)
         )
         
@@ -271,28 +305,28 @@ class DesktopPet:
                 name = shortcut.get('name', 'Unknown')
                 path = shortcut.get('path', '')
                 self.apps_submenu.add_command(
-                    label=f"  {name}", 
+                    label=f"  {name}",
                     command=lambda p=path: self.open_custom_path(p)
                 )
         else:
-            self.apps_submenu.add_command(label="  (No apps added yet)", state='disabled')
+            self.apps_submenu.add_command(label="  (No apps added)", state='disabled')
         
         self.apps_submenu.add_separator()
-        self.apps_submenu.add_command(label="  ➕ Add New App", command=self.add_custom_shortcut)
-        self.apps_submenu.add_command(label="  🗑️ Delete App", command=self.delete_custom_shortcut)
+        self.apps_submenu.add_command(label="  ➕ Add App", command=self.add_custom_shortcut)
+        self.apps_submenu.add_command(label="  🗑️ Remove App", command=self.delete_custom_shortcut)
         
-        self.menu.add_cascade(label="  🚀 My Apps", menu=self.apps_submenu)
+        self.menu.add_cascade(label="  💻 My Apps", menu=self.apps_submenu)
         
-        # Custom URLs Submenu
+        # Custom URLs submenu
         self.urls_submenu = TkMenu(
             self.menu,
             tearoff=0,
-            bg='#1e1e1e',
+            bg='#3d3d5c',
             fg='#ffffff',
-            activebackground='#0078d4',
+            activebackground='#4d4d6c',
             activeforeground='#ffffff',
-            relief='flat',
-            bd=0,
+            relief='solid',
+            bd=1,
             font=('Segoe UI', 10)
         )
         
@@ -301,59 +335,60 @@ class DesktopPet:
                 name = url_item.get('name', 'Unknown')
                 url = url_item.get('url', '')
                 self.urls_submenu.add_command(
-                    label=f"  {name}", 
+                    label=f"  {name}",
                     command=lambda u=url: self.open_url(u)
                 )
         else:
-            self.urls_submenu.add_command(label="  (No URLs added yet)", state='disabled')
+            self.urls_submenu.add_command(label="  (No URLs added)", state='disabled')
         
         self.urls_submenu.add_separator()
-        self.urls_submenu.add_command(label="  ➕ Add New URL", command=self.add_custom_url)
-        self.urls_submenu.add_command(label="  🗑️ Delete URL", command=self.delete_custom_url)
+        self.urls_submenu.add_command(label="  ➕ Add URL", command=self.add_custom_url)
+        self.urls_submenu.add_command(label="  🗑️ Remove URL", command=self.delete_custom_url)
         
         self.menu.add_cascade(label="  🌐 My URLs", menu=self.urls_submenu)
         
         self.menu.add_separator()
         
         # Settings section
-        self.menu.add_command(label="  🖼️ Change Pet Image/GIF", command=self.change_pet_image)
+        self.menu.add_command(
+            label="  🖼️ Change Image",
+            command=self.change_pet_image
+        )
         self.menu.add_checkbutton(
-            label="  📌 Stay on Desktop Only", 
+            label="  📌 Desktop Only",
             variable=self.stay_on_desktop,
             command=self.toggle_stay_on_desktop,
-            selectcolor='#0078d4',  # Blue background when checked
-            activebackground='#0078d4',
-            foreground='#ffffff',
-            activeforeground='#ffffff'
+            selectcolor='#4d4d6c',
+            indicatoron=True
         )
         
         self.menu.add_separator()
         
         # Tools section
-        self.menu.add_command(label="  📂 Open Settings Folder", command=self.open_settings_folder)
+        self.menu.add_command(label="  📂 Settings Folder", command=self.open_settings_folder)
         self.menu.add_command(label="  ❓ Help", command=self.show_help)
-        self.menu.add_command(label="  🛠 Debug Console", command=self.toggle_console)
-        self.menu.add_command(label="  🚀 Add to Startup", command=self.add_to_startup)
+        self.menu.add_command(label="  🛠️ Console", command=self.toggle_console)
+        self.menu.add_command(label="  💻 Add to Startup", command=self.add_to_startup)
         
         self.menu.add_separator()
-        self.menu.add_command(label="  ❌ Exit", command=self.root.quit, foreground='#ff4444')
+        
+        # Exit with red highlight
+        self.menu.add_command(
+            label="  ❌ Close",
+            command=self.root.quit,
+            foreground='#ff6b6b',
+            activeforeground='#ff8888'
+        )
     
     def show_menu(self, event):
-        """Show context menu on right-click"""
+        """Show context menu"""
         try:
             self.menu.tk_popup(event.x_root, event.y_root)
-            
-            def block_right_click(e):
-                return "break"
-            
-            self.menu.bind("<Button-3>", block_right_click)
-            self.menu.bind("<ButtonRelease-3>", block_right_click)
-            
         finally:
             self.menu.grab_release()
     
     def open_settings_folder(self):
-        """Open the folder where settings are stored"""
+        """Open settings folder"""
         system = platform.system()
         try:
             if system == 'Windows':
@@ -362,10 +397,9 @@ class DesktopPet:
                 subprocess.Popen(['open', self.app_data_dir])
             else:
                 subprocess.Popen(['xdg-open', self.app_data_dir])
-            self.log_to_console(f"Opening settings folder: {self.app_data_dir}")
+            self.log_to_console(f"Opened: {self.app_data_dir}")
         except Exception as e:
-            messagebox.showerror("Error", f"Could not open settings folder:\n\n{e}")
-            self.log_to_console(f"Error opening settings folder: {e}")
+            messagebox.showerror("Error", f"Could not open folder:\n{e}")
     
     def open_notepad(self):
         """Open Notepad"""
@@ -376,13 +410,10 @@ class DesktopPet:
             elif system == 'Darwin':
                 subprocess.Popen(['open', '-a', 'TextEdit'])
             else:
-                try:
-                    subprocess.Popen(['gedit'])
-                except:
-                    subprocess.Popen(['xdg-open', 'text/plain'])
-            print("Opening Notepad...")
+                subprocess.Popen(['gedit'])
+            self.log_to_console("Opened Notepad")
         except Exception as e:
-            print(f"Error opening notepad: {e}")
+            self.log_to_console(f"Error: {e}")
     
     def open_calculator(self):
         """Open Calculator"""
@@ -393,13 +424,10 @@ class DesktopPet:
             elif system == 'Darwin':
                 subprocess.Popen(['open', '-a', 'Calculator'])
             else:
-                try:
-                    subprocess.Popen(['gnome-calculator'])
-                except:
-                    subprocess.Popen(['xcalc'])
-            print("Opening Calculator...")
+                subprocess.Popen(['gnome-calculator'])
+            self.log_to_console("Opened Calculator")
         except Exception as e:
-            print(f"Error opening calculator: {e}")
+            self.log_to_console(f"Error: {e}")
     
     def open_downloads(self):
         """Open Downloads folder"""
@@ -412,458 +440,226 @@ class DesktopPet:
                 subprocess.Popen(['open', downloads_path])
             else:
                 subprocess.Popen(['xdg-open', downloads_path])
-            print(f"Opening Downloads folder: {downloads_path}")
+            self.log_to_console("Opened Downloads")
         except Exception as e:
-            print(f"Error opening downloads: {e}")
+            self.log_to_console(f"Error: {e}")
     
     def add_custom_url(self):
-        """Add a custom URL"""
-        name = simpledialog.askstring("Add URL", "Enter a name for this URL:\n(e.g., 'Google', 'YouTube', 'Gmail')")
+        """Add custom URL"""
+        name = simpledialog.askstring("Add URL", "Enter name:")
         if not name:
             return
         
-        url = simpledialog.askstring(
-            "Enter URL",
-            "Enter the full URL:\n\n"
-            "Examples:\n"
-            "• https://www.google.com\n"
-            "• https://www.youtube.com\n"
-            "• https://mail.google.com\n"
-            "• https://github.com"
-        )
+        url = simpledialog.askstring("Enter URL", "Enter full URL (https://...):")
         
         if url:
             if not url.startswith('http://') and not url.startswith('https://'):
-                messagebox.showwarning("Invalid URL", "URL must start with http:// or https://")
+                messagebox.showwarning("Invalid", "URL must start with http:// or https://")
                 return
             
-            self.custom_urls.append({
-                'name': name,
-                'url': url
-            })
+            self.custom_urls.append({'name': name, 'url': url})
             self.save_custom_urls()
-            
-            self.menu.destroy()
-            self.create_menu()
-            
-            messagebox.showinfo("Success", f"Added URL: {name}")
-            print(f"Added custom URL: {name} -> {url}")
-            self.log_to_console(f"Added URL: {name} -> {url}")
+            self.recreate_menu()
+            messagebox.showinfo("Success", f"Added: {name}")
+            self.log_to_console(f"Added URL: {name}")
     
     def delete_custom_url(self):
-        """Delete a custom URL"""
+        """Delete custom URL"""
         if not self.custom_urls:
-            messagebox.showinfo("No URLs", "You don't have any custom URLs to delete.")
+            messagebox.showinfo("No URLs", "No URLs to delete")
             return
         
         delete_window = tk.Toplevel(self.root)
         delete_window.title("Delete URL")
-        delete_window.geometry("450x500")
-        delete_window.configure(bg='#f5f5f5')
+        delete_window.geometry("400x450")
+        delete_window.configure(bg='#1e1e1e')
         delete_window.attributes('-topmost', True)
-        delete_window.resizable(False, False)
         
-        main_container = tk.Frame(delete_window, bg='#f5f5f5')
-        main_container.pack(fill=tk.BOTH, expand=True)
-        
-        header_frame = tk.Frame(main_container, bg='#ffffff', height=80)
-        header_frame.pack(fill=tk.X)
-        header_frame.pack_propagate(False)
-        
-        header_content = tk.Frame(header_frame, bg='#ffffff')
-        header_content.place(relx=0.5, rely=0.5, anchor='center')
-        
-        title_label = tk.Label(
-            header_content,
+        tk.Label(
+            delete_window,
             text="Delete URL",
-            bg='#ffffff',
-            fg='#1e1e1e',
-            font=('Segoe UI', 20, 'bold')
-        )
-        title_label.pack()
-        
-        subtitle_label = tk.Label(
-            header_content,
-            text="Select a URL to remove",
-            bg='#ffffff',
-            fg='#666666',
-            font=('Segoe UI', 10)
-        )
-        subtitle_label.pack()
-        
-        content_frame = tk.Frame(main_container, bg='#f5f5f5')
-        content_frame.pack(fill=tk.BOTH, expand=True, padx=30, pady=20)
-        
-        listbox_frame = tk.Frame(content_frame, bg='#ffffff', highlightthickness=1, 
-                                 highlightbackground='#e0e0e0', highlightcolor='#0078d4')
-        listbox_frame.pack(fill=tk.BOTH, expand=True)
-        
-        scrollbar = tk.Scrollbar(listbox_frame, bg='#f5f5f5', troughcolor='#ffffff', width=14)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y, padx=2, pady=2)
+            bg='#1e1e1e',
+            fg='#ffffff',
+            font=('Segoe UI', 16, 'bold')
+        ).pack(pady=20)
         
         listbox = tk.Listbox(
-            listbox_frame,
-            bg='#ffffff',
-            fg='#1e1e1e',
-            font=('Segoe UI', 11),
-            selectmode=tk.SINGLE,
-            yscrollcommand=scrollbar.set,
-            relief=tk.FLAT,
-            highlightthickness=0,
-            selectbackground='#e3f2fd',
-            selectforeground='#0078d4',
-            activestyle='none',
+            delete_window,
+            bg='#2d2d30',
+            fg='#f0f0f0',
+            font=('Segoe UI', 10),
+            selectbackground='#3e3e42',
+            selectforeground='#ffffff',
+            relief='flat',
             borderwidth=0
         )
-        listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=15, pady=15)
-        scrollbar.config(command=listbox.yview)
+        listbox.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 20))
         
         for url_item in self.custom_urls:
-            listbox.insert(tk.END, f"  🌐  {url_item['name']}")
+            listbox.insert(tk.END, f"  🌐 {url_item['name']}")
         
         def do_delete():
             selection = listbox.curselection()
             if not selection:
-                error_label = tk.Label(
-                    content_frame,
-                    text="⚠️ Please select a URL first",
-                    bg='#fff3cd',
-                    fg='#856404',
-                    font=('Segoe UI', 9),
-                    padx=10,
-                    pady=5
-                )
-                error_label.pack(pady=(5, 0))
-                delete_window.after(2000, error_label.destroy)
                 return
             
             index = selection[0]
-            deleted_url = self.custom_urls[index]
+            deleted = self.custom_urls[index]
             
-            confirm = messagebox.askyesno(
-                "Confirm Delete",
-                f"Delete '{deleted_url['name']}'?",
-                icon='warning'
-            )
-            
-            if confirm:
+            if messagebox.askyesno("Confirm", f"Delete '{deleted['name']}'?"):
                 self.custom_urls.pop(index)
                 self.save_custom_urls()
-                
-                self.menu.destroy()
-                self.create_menu()
-                
+                self.recreate_menu()
                 delete_window.destroy()
-                
-                messagebox.showinfo("✓ Deleted", f"Removed {deleted_url['name']}")
-                print(f"Deleted custom URL: {deleted_url['name']}")
-                self.log_to_console(f"Deleted URL: {deleted_url['name']}")
+                messagebox.showinfo("Deleted", f"Removed {deleted['name']}")
+                self.log_to_console(f"Deleted URL: {deleted['name']}")
         
-        button_frame = tk.Frame(main_container, bg='#f5f5f5', height=70)
-        button_frame.pack(fill=tk.X, padx=30, pady=(0, 20))
-        button_frame.pack_propagate(False)
+        btn_frame = tk.Frame(delete_window, bg='#1e1e1e')
+        btn_frame.pack(pady=(0, 20))
         
-        button_container = tk.Frame(button_frame, bg='#f5f5f5')
-        button_container.place(relx=0.5, rely=0.5, anchor='center')
-        
-        delete_btn = tk.Button(
-            button_container,
+        tk.Button(
+            btn_frame,
             text="Delete",
             command=do_delete,
             bg='#d32f2f',
             fg='white',
             font=('Segoe UI', 10, 'bold'),
-            padx=30,
-            pady=10,
-            relief=tk.FLAT,
-            cursor='hand2',
-            activebackground='#c62828',
-            activeforeground='white',
-            borderwidth=0
-        )
-        delete_btn.pack(side=tk.LEFT, padx=5)
+            padx=25,
+            pady=8,
+            relief='flat',
+            cursor='hand2'
+        ).pack(side=tk.LEFT, padx=5)
         
-        def on_enter_delete(e):
-            delete_btn['bg'] = '#c62828'
-        
-        def on_leave_delete(e):
-            delete_btn['bg'] = '#d32f2f'
-        
-        delete_btn.bind('<Enter>', on_enter_delete)
-        delete_btn.bind('<Leave>', on_leave_delete)
-        
-        cancel_btn = tk.Button(
-            button_container,
+        tk.Button(
+            btn_frame,
             text="Cancel",
             command=delete_window.destroy,
-            bg='#e0e0e0',
-            fg='#1e1e1e',
+            bg='#424242',
+            fg='white',
             font=('Segoe UI', 10),
-            padx=30,
-            pady=10,
-            relief=tk.FLAT,
-            cursor='hand2',
-            activebackground='#d0d0d0',
-            activeforeground='#1e1e1e',
-            borderwidth=0
-        )
-        cancel_btn.pack(side=tk.LEFT, padx=5)
-        
-        def on_enter_cancel(e):
-            cancel_btn['bg'] = '#d0d0d0'
-        
-        def on_leave_cancel(e):
-            cancel_btn['bg'] = '#e0e0e0'
-        
-        cancel_btn.bind('<Enter>', on_enter_cancel)
-        cancel_btn.bind('<Leave>', on_leave_cancel)
-        
-        delete_window.update_idletasks()
-        x = (delete_window.winfo_screenwidth() // 2) - (delete_window.winfo_width() // 2)
-        y = (delete_window.winfo_screenheight() // 2) - (delete_window.winfo_height() // 2)
-        delete_window.geometry(f"+{x}+{y}")
-        
-        delete_window.grab_set()
-        delete_window.focus_set()
+            padx=25,
+            pady=8,
+            relief='flat',
+            cursor='hand2'
+        ).pack(side=tk.LEFT, padx=5)
     
     def open_url(self, url):
-        """Open a URL in the default browser"""
+        """Open URL"""
         try:
             webbrowser.open(url)
-            print(f"Opening URL: {url}")
-            self.log_to_console(f"Opened URL: {url}")
+            self.log_to_console(f"Opened: {url}")
         except Exception as e:
-            messagebox.showerror("Error", f"Could not open URL:\n\n{e}")
-            print(f"Error opening URL: {e}")
-            self.log_to_console(f"Error opening URL: {e}")
+            messagebox.showerror("Error", f"Could not open URL:\n{e}")
     
     def add_custom_shortcut(self):
-        """Add a custom shortcut via dialog"""
-        name = simpledialog.askstring("Add Shortcut", "Enter a name for this shortcut:")
+        """Add custom shortcut"""
+        name = simpledialog.askstring("Add Shortcut", "Enter name:")
         if not name:
             return
         
         choice = messagebox.askquestion(
-            "Shortcut Type",
-            "Do you want to select a FILE?\n\n" +
-            "Click 'Yes' for a file\n" +
-            "Click 'No' to select a folder or enter a command"
+            "Type",
+            "Select FILE?\n\nYes = File\nNo = Folder/Command"
         )
         
         if choice == 'yes':
-            path = filedialog.askopenfilename(title="Select a file")
+            path = filedialog.askopenfilename(title="Select file")
         else:
-            folder_choice = messagebox.askquestion(
-                "Path Type",
-                "Do you want to select a FOLDER?\n\n" +
-                "Click 'Yes' to browse for a folder\n" +
-                "Click 'No' to manually enter a path/command"
-            )
-            
+            folder_choice = messagebox.askquestion("Type", "Select FOLDER?\n\nYes = Folder\nNo = Command")
             if folder_choice == 'yes':
-                path = filedialog.askdirectory(title="Select a folder")
+                path = filedialog.askdirectory(title="Select folder")
             else:
-                path = simpledialog.askstring(
-                    "Enter Path",
-                    "Enter the full path or command:\n\n" +
-                    "Examples:\n" +
-                    "• C:\\Program Files\\MyApp\\app.exe\n" +
-                    "• discord (for installed apps)\n" +
-                    "• spotify (for installed apps)"
-                )
+                path = simpledialog.askstring("Path", "Enter path or command:")
         
         if path:
-            self.custom_shortcuts.append({
-                'name': name,
-                'path': path
-            })
+            self.custom_shortcuts.append({'name': name, 'path': path})
             self.save_custom_shortcuts()
-            
-            self.menu.destroy()
-            self.create_menu()
-            
-            messagebox.showinfo("Success", f"Added shortcut: {name}")
-            print(f"Added custom shortcut: {name} -> {path}")
-            self.log_to_console(f"Added shortcut: {name} -> {path}")
+            self.recreate_menu()
+            messagebox.showinfo("Success", f"Added: {name}")
+            self.log_to_console(f"Added shortcut: {name}")
     
     def delete_custom_shortcut(self):
-        """Delete a custom shortcut with modern UI"""
+        """Delete custom shortcut"""
         if not self.custom_shortcuts:
-            messagebox.showinfo("No Shortcuts", "You don't have any custom shortcuts to delete.")
+            messagebox.showinfo("No Shortcuts", "No shortcuts to delete")
             return
         
         delete_window = tk.Toplevel(self.root)
         delete_window.title("Delete Shortcut")
-        delete_window.geometry("450x500")
-        delete_window.configure(bg='#f5f5f5')
+        delete_window.geometry("400x450")
+        delete_window.configure(bg='#1e1e1e')
         delete_window.attributes('-topmost', True)
-        delete_window.resizable(False, False)
         
-        main_container = tk.Frame(delete_window, bg='#f5f5f5')
-        main_container.pack(fill=tk.BOTH, expand=True)
-        
-        header_frame = tk.Frame(main_container, bg='#ffffff', height=80)
-        header_frame.pack(fill=tk.X)
-        header_frame.pack_propagate(False)
-        
-        header_content = tk.Frame(header_frame, bg='#ffffff')
-        header_content.place(relx=0.5, rely=0.5, anchor='center')
-        
-        title_label = tk.Label(
-            header_content,
+        tk.Label(
+            delete_window,
             text="Delete Shortcut",
-            bg='#ffffff',
-            fg='#1e1e1e',
-            font=('Segoe UI', 20, 'bold')
-        )
-        title_label.pack()
-        
-        subtitle_label = tk.Label(
-            header_content,
-            text="Select a shortcut to remove",
-            bg='#ffffff',
-            fg='#666666',
-            font=('Segoe UI', 10)
-        )
-        subtitle_label.pack()
-        
-        content_frame = tk.Frame(main_container, bg='#f5f5f5')
-        content_frame.pack(fill=tk.BOTH, expand=True, padx=30, pady=20)
-        
-        listbox_frame = tk.Frame(content_frame, bg='#ffffff', highlightthickness=1, 
-                                 highlightbackground='#e0e0e0', highlightcolor='#0078d4')
-        listbox_frame.pack(fill=tk.BOTH, expand=True)
-        
-        scrollbar = tk.Scrollbar(listbox_frame, bg='#f5f5f5', troughcolor='#ffffff', width=14)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y, padx=2, pady=2)
+            bg='#1e1e1e',
+            fg='#ffffff',
+            font=('Segoe UI', 16, 'bold')
+        ).pack(pady=20)
         
         listbox = tk.Listbox(
-            listbox_frame,
-            bg='#ffffff',
-            fg='#1e1e1e',
-            font=('Segoe UI', 11),
-            selectmode=tk.SINGLE,
-            yscrollcommand=scrollbar.set,
-            relief=tk.FLAT,
-            highlightthickness=0,
-            selectbackground='#e3f2fd',
-            selectforeground='#0078d4',
-            activestyle='none',
+            delete_window,
+            bg='#2d2d30',
+            fg='#f0f0f0',
+            font=('Segoe UI', 10),
+            selectbackground='#3e3e42',
+            selectforeground='#ffffff',
+            relief='flat',
             borderwidth=0
         )
-        listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=15, pady=15)
-        scrollbar.config(command=listbox.yview)
+        listbox.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 20))
         
         for shortcut in self.custom_shortcuts:
-            listbox.insert(tk.END, f"  🔗  {shortcut['name']}")
+            listbox.insert(tk.END, f"  📎 {shortcut['name']}")
         
         def do_delete():
             selection = listbox.curselection()
             if not selection:
-                error_label = tk.Label(
-                    content_frame,
-                    text="⚠️ Please select a shortcut first",
-                    bg='#fff3cd',
-                    fg='#856404',
-                    font=('Segoe UI', 9),
-                    padx=10,
-                    pady=5
-                )
-                error_label.pack(pady=(5, 0))
-                delete_window.after(2000, error_label.destroy)
                 return
             
             index = selection[0]
-            deleted_shortcut = self.custom_shortcuts[index]
+            deleted = self.custom_shortcuts[index]
             
-            confirm = messagebox.askyesno(
-                "Confirm Delete",
-                f"Delete '{deleted_shortcut['name']}'?",
-                icon='warning'
-            )
-            
-            if confirm:
+            if messagebox.askyesno("Confirm", f"Delete '{deleted['name']}'?"):
                 self.custom_shortcuts.pop(index)
                 self.save_custom_shortcuts()
-                
-                self.menu.destroy()
-                self.create_menu()
-                
+                self.recreate_menu()
                 delete_window.destroy()
-                
-                messagebox.showinfo("✓ Deleted", f"Removed {deleted_shortcut['name']}")
-                print(f"Deleted custom shortcut: {deleted_shortcut['name']}")
-                self.log_to_console(f"Deleted shortcut: {deleted_shortcut['name']}")
+                messagebox.showinfo("Deleted", f"Removed {deleted['name']}")
+                self.log_to_console(f"Deleted: {deleted['name']}")
         
-        button_frame = tk.Frame(main_container, bg='#f5f5f5', height=70)
-        button_frame.pack(fill=tk.X, padx=30, pady=(0, 20))
-        button_frame.pack_propagate(False)
+        btn_frame = tk.Frame(delete_window, bg='#1e1e1e')
+        btn_frame.pack(pady=(0, 20))
         
-        button_container = tk.Frame(button_frame, bg='#f5f5f5')
-        button_container.place(relx=0.5, rely=0.5, anchor='center')
-        
-        delete_btn = tk.Button(
-            button_container,
+        tk.Button(
+            btn_frame,
             text="Delete",
             command=do_delete,
             bg='#d32f2f',
             fg='white',
             font=('Segoe UI', 10, 'bold'),
-            padx=30,
-            pady=10,
-            relief=tk.FLAT,
-            cursor='hand2',
-            activebackground='#c62828',
-            activeforeground='white',
-            borderwidth=0
-        )
-        delete_btn.pack(side=tk.LEFT, padx=5)
+            padx=25,
+            pady=8,
+            relief='flat',
+            cursor='hand2'
+        ).pack(side=tk.LEFT, padx=5)
         
-        def on_enter_delete(e):
-            delete_btn['bg'] = '#c62828'
-        
-        def on_leave_delete(e):
-            delete_btn['bg'] = '#d32f2f'
-        
-        delete_btn.bind('<Enter>', on_enter_delete)
-        delete_btn.bind('<Leave>', on_leave_delete)
-        
-        cancel_btn = tk.Button(
-            button_container,
+        tk.Button(
+            btn_frame,
             text="Cancel",
             command=delete_window.destroy,
-            bg='#e0e0e0',
-            fg='#1e1e1e',
+            bg='#424242',
+            fg='white',
             font=('Segoe UI', 10),
-            padx=30,
-            pady=10,
-            relief=tk.FLAT,
-            cursor='hand2',
-            activebackground='#d0d0d0',
-            activeforeground='#1e1e1e',
-            borderwidth=0
-        )
-        cancel_btn.pack(side=tk.LEFT, padx=5)
-        
-        def on_enter_cancel(e):
-            cancel_btn['bg'] = '#d0d0d0'
-        
-        def on_leave_cancel(e):
-            cancel_btn['bg'] = '#e0e0e0'
-        
-        cancel_btn.bind('<Enter>', on_enter_cancel)
-        cancel_btn.bind('<Leave>', on_leave_cancel)
-        
-        delete_window.update_idletasks()
-        x = (delete_window.winfo_screenwidth() // 2) - (delete_window.winfo_width() // 2)
-        y = (delete_window.winfo_screenheight() // 2) - (delete_window.winfo_height() // 2)
-        delete_window.geometry(f"+{x}+{y}")
-        
-        delete_window.grab_set()
-        delete_window.focus_set()
+            padx=25,
+            pady=8,
+            relief='flat',
+            cursor='hand2'
+        ).pack(side=tk.LEFT, padx=5)
     
     def open_custom_path(self, path):
-        """Open a custom path (file, folder, or command)"""
+        """Open custom path"""
         system = platform.system()
         try:
             if os.path.exists(path):
@@ -873,122 +669,85 @@ class DesktopPet:
                     subprocess.Popen(['open', path])
                 else:
                     subprocess.Popen(['xdg-open', path])
-                print(f"Opening path: {path}")
-                self.log_to_console(f"Opened path: {path}")
+                self.log_to_console(f"Opened: {path}")
                 return
             
             if system == 'Windows':
                 app_lower = path.lower().strip()
                 
                 if app_lower == 'discord':
-                    discord_paths = [
-                        os.path.join(os.environ.get('LOCALAPPDATA', ''), 'Discord', 'Update.exe'),
-                    ]
-                    
-                    for discord_path in discord_paths:
-                        if os.path.exists(discord_path):
-                            subprocess.Popen([discord_path, '--processStart', 'Discord.exe'])
-                            print(f"Launching Discord via: {discord_path}")
-                            self.log_to_console(f"Launched Discord")
-                            return
+                    discord_path = os.path.join(os.environ.get('LOCALAPPDATA', ''), 'Discord', 'Update.exe')
+                    if os.path.exists(discord_path):
+                        subprocess.Popen([discord_path, '--processStart', 'Discord.exe'])
+                        self.log_to_console("Launched Discord")
+                        return
                 
                 elif app_lower == 'spotify':
                     spotify_path = os.path.join(os.environ.get('APPDATA', ''), 'Spotify', 'Spotify.exe')
                     if os.path.exists(spotify_path):
                         subprocess.Popen([spotify_path])
-                        print(f"Launching Spotify via: {spotify_path}")
-                        self.log_to_console(f"Launched Spotify")
+                        self.log_to_console("Launched Spotify")
                         return
                 
-                try:
-                    subprocess.Popen(path, shell=True)
-                    print(f"Running command with shell: {path}")
-                    self.log_to_console(f"Launched command: {path}")
-                    return
-                except Exception as e1:
-                    print(f"Method 1 (shell) failed: {e1}")
-                    try:
-                        subprocess.Popen([path])
-                        print(f"Running command: {path}")
-                        self.log_to_console(f"Launched command: {path}")
-                        return
-                    except Exception as e2:
-                        print(f"Method 2 (direct) failed: {e2}")
-                        raise e2
+                subprocess.Popen(path, shell=True)
+                self.log_to_console(f"Launched: {path}")
             else:
                 subprocess.Popen([path])
-                print(f"Running command: {path}")
-                self.log_to_console(f"Launched command: {path}")
+                self.log_to_console(f"Launched: {path}")
                 
         except Exception as e:
-            error_msg = f"Could not open: {path}\n\nError: {e}\n\nTip: For installed apps, try using the full path to the .exe file."
-            messagebox.showerror("Error", error_msg)
-            print(f"Error opening custom path: {e}")
-            self.log_to_console(f"Error opening {path}: {e}")
+            messagebox.showerror("Error", f"Could not open:\n{path}\n\n{e}")
+            self.log_to_console(f"Error: {e}")
     
     def change_pet_image(self):
-        """Change the pet image/GIF"""
+        """Change pet image"""
         path = filedialog.askopenfilename(
-            title="Select an image or GIF",
+            title="Select image/GIF",
             filetypes=[
-                ("Image files", "*.gif *.png *.jpg *.jpeg *.bmp"),
-                ("GIF files", "*.gif"),
+                ("Images", "*.gif *.png *.jpg *.jpeg"),
                 ("All files", "*.*")
             ]
         )
         
         if path:
             try:
-                test_img = Image.open(path)
-                test_img.close()
+                test = Image.open(path)
+                test.close()
                 
                 self.custom_image_path = path
                 self.save_settings()
-                
                 self.load_gif()
                 
-                messagebox.showinfo("Success", "Pet image changed! Restart may be needed for best results.")
-                print(f"Changed pet image to: {path}")
-                
+                messagebox.showinfo("Success", "Image changed!")
+                self.log_to_console(f"Changed image: {path}")
             except Exception as e:
-                messagebox.showerror("Error", f"Could not load image:\n\n{e}")
-                print(f"Error loading custom image: {e}")
+                messagebox.showerror("Error", f"Could not load:\n{e}")
+                self.log_to_console(f"Image load error: {e}")
     
     def show_help(self):
-        """Show help dialog"""
-        help_text = """Desktop Pet - Help Guide
+        """Show help"""
+        help_text = """Desktop Pet - Help
 
-🎮 BASIC CONTROLS:
-• LEFT CLICK + DRAG: Move the pet anywhere
-• RIGHT CLICK: Open menu
+🎮 CONTROLS:
+• Left-click + drag to move
+• Right-click for menu
 
-📋 MENU ORGANIZATION:
-• Quick Access: Notepad, Calculator, Downloads
-• 🚀 My Apps: Your custom application shortcuts
-• 🌐 My URLs: Your custom website bookmarks
-• Settings & Tools: Image, startup, console, etc.
-
-🔗 ADDING CUSTOM APPS:
-1. Right-click → My Apps → Add New App
-2. Enter a name
-3. Choose file, folder, or enter command
-
-🌐 ADDING CUSTOM URLS:
-1. Right-click → My URLs → Add New URL
-2. Enter a name (e.g., "Google", "YouTube")
-3. Enter full URL (e.g., https://www.google.com)
+📋 FEATURES:
+• Quick access to common apps
+• Custom app shortcuts
+• Custom URL bookmarks
+• Change pet image
+• Debug console
 
 💡 TIPS:
-• URLs automatically open in your default browser
-• Use dropdown menus to keep things organized
-• Settings are saved automatically
-• Use Debug Console to troubleshoot
-• Add to Startup to launch on boot"""
+• Settings save automatically
+• Use console to troubleshoot
+• Add to startup for auto-launch"""
         
-        messagebox.showinfo("Desktop Pet - Help", help_text)
+        messagebox.showinfo("Help", help_text)
     
     def log_to_console(self, message):
-        """Log message to console buffer and console window if open"""
+        """Log to console"""
         self.console_buffer.append(message)
         if self.console_text:
             self.console_text.insert(tk.END, message + "\n")
@@ -996,7 +755,7 @@ class DesktopPet:
         print(message)
     
     def toggle_console(self):
-        """Toggle debug console window"""
+        """Toggle console"""
         if self.console_window and self.console_window.winfo_exists():
             self.console_window.destroy()
             self.console_window = None
@@ -1005,35 +764,25 @@ class DesktopPet:
             self.show_console()
     
     def show_console(self):
-        """Show debug console window"""
+        """Show console window"""
         self.console_window = tk.Toplevel(self.root)
-        self.console_window.title("Desktop Pet - Debug Console")
-        self.console_window.geometry("700x400")
-        self.console_window.configure(bg='#1a1a1a')
+        self.console_window.title("Debug Console")
+        self.console_window.geometry("650x400")
+        self.console_window.configure(bg='#1e1e1e')
         self.console_window.attributes('-topmost', True)
-        self.console_window.attributes('-alpha', 0.95)
         
-        main_container = tk.Frame(self.console_window, bg='#1a1a1a')
-        main_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-        
-        title_frame = tk.Frame(main_container, bg='#00aa00', height=50)
-        title_frame.pack(fill=tk.X, pady=(0, 15))
-        title_frame.pack_propagate(False)
-        
-        title_label = tk.Label(
-            title_frame,
-            text="🛠 Debug Console",
-            bg='#00aa00',
-            fg='white',
+        tk.Label(
+            self.console_window,
+            text="🛠️ Debug Console",
+            bg='#1e1e1e',
+            fg='#4CAF50',
             font=('Segoe UI', 14, 'bold')
-        )
-        title_label.place(relx=0.5, rely=0.5, anchor='center')
+        ).pack(pady=15)
         
-        text_frame = tk.Frame(main_container, bg='#2a2a2a', highlightthickness=1, 
-                             highlightbackground='#444444')
-        text_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
+        text_frame = tk.Frame(self.console_window, bg='#0a0a0a')
+        text_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 15))
         
-        scrollbar = tk.Scrollbar(text_frame, bg='#3a3a3a', troughcolor='#2a2a2a', width=12)
+        scrollbar = tk.Scrollbar(text_frame)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         self.console_text = tk.Text(
@@ -1043,56 +792,55 @@ class DesktopPet:
             font=('Consolas', 9),
             wrap=tk.WORD,
             yscrollcommand=scrollbar.set,
-            relief=tk.FLAT,
+            relief='flat',
             padx=10,
             pady=10
         )
         self.console_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.config(command=self.console_text.yview)
         
-        for message in self.console_buffer:
-            self.console_text.insert(tk.END, message + "\n")
+        for msg in self.console_buffer:
+            self.console_text.insert(tk.END, msg + "\n")
         self.console_text.see(tk.END)
         
-        button_frame = tk.Frame(main_container, bg='#1a1a1a')
-        button_frame.pack()
+        btn_frame = tk.Frame(self.console_window, bg='#1e1e1e')
+        btn_frame.pack(pady=(0, 15))
         
-        clear_btn = tk.Button(
-            button_frame,
-            text="Clear Console",
+        tk.Button(
+            btn_frame,
+            text="Clear",
             command=self.clear_console,
-            bg='#555555',
+            bg='#424242',
             fg='white',
             font=('Segoe UI', 10),
             padx=20,
             pady=8,
-            relief=tk.FLAT,
+            relief='flat',
             cursor='hand2'
-        )
-        clear_btn.pack(side=tk.LEFT, padx=5)
+        ).pack(side=tk.LEFT, padx=5)
         
-        close_btn = tk.Button(
-            button_frame,
+        tk.Button(
+            btn_frame,
             text="Close",
             command=self.console_window.destroy,
-            bg='#00aa00',
+            bg='#4CAF50',
             fg='white',
             font=('Segoe UI', 10, 'bold'),
-            padx=30,
+            padx=25,
             pady=8,
-            relief=tk.FLAT,
+            relief='flat',
             cursor='hand2'
-        )
-        close_btn.pack(side=tk.LEFT, padx=5)
+        ).pack(side=tk.LEFT, padx=5)
     
     def clear_console(self):
-        """Clear console text"""
+        """Clear console"""
         if self.console_text:
             self.console_text.delete(1.0, tk.END)
         self.console_buffer.clear()
+        self.log_to_console("Console cleared")
     
     def add_to_startup(self):
-        """Add the desktop pet to Windows startup"""
+        """Add to startup"""
         try:
             import winreg
             import sys
@@ -1111,26 +859,26 @@ class DesktopPet:
             winreg.CloseKey(key)
             
             messagebox.showinfo(
-                "Success", 
-                "Desktop Pet added to startup!\n\n"
-                "It will now start automatically when you log in.\n\n"
-                "To remove it later, go to Task Manager > Startup tab."
+                "Success",
+                "Desktop Pet added to startup!\n\nIt will start automatically on login.\n\nRemove via Task Manager > Startup if needed."
             )
             self.log_to_console("Added to Windows startup")
             
         except Exception as e:
             messagebox.showerror("Error", f"Could not add to startup:\n\n{e}")
-            self.log_to_console(f"Error adding to startup: {e}")
+            self.log_to_console(f"Startup error: {e}")
 
 if __name__ == "__main__":
-    print("Starting Desktop Pet...")
-    print("LEFT CLICK and DRAG to move")
-    print("RIGHT CLICK to open menu")
-    print("-" * 40)
+    print("=" * 50)
+    print("Desktop Pet - Starting...")
+    print("=" * 50)
+    print("LEFT CLICK + DRAG: Move the pet")
+    print("RIGHT CLICK: Open menu")
+    print("=" * 50)
     
     pet = DesktopPet()
     
     pet.log_to_console("Desktop Pet started successfully")
     pet.log_to_console(f"Settings directory: {pet.app_data_dir}")
-    pet.log_to_console(f"Loaded {len(pet.custom_shortcuts)} custom shortcuts")
-    pet.log_to_console(f"Loaded {len(pet.custom_urls)} custom URLs")
+    pet.log_to_console(f"Loaded {len(pet.custom_shortcuts)} shortcuts")
+    pet.log_to_console(f"Loaded {len(pet.custom_urls)} URLs")
