@@ -1,5 +1,5 @@
 """
-Enhanced Desktop Pet with AI Chat and Web Search - PART 1
+Enhanced Desktop Pet with AI Chat and Web Search - PART 1 OF 3
 Features:
 - Web search integration for current information
 - Intuitive chat interface with suggestions
@@ -7,8 +7,9 @@ Features:
 - All original features preserved
 
 INSTRUCTIONS:
-1. Copy this entire PART 1 file and save as desktop_pet.py
-2. Then copy PART 2 below and paste it at the bottom of desktop_pet.py
+1. Copy PART 1, save as desktop_pet.py
+2. Copy PART 2 and paste at the bottom of desktop_pet.py
+3. Copy PART 3 and paste at the bottom of desktop_pet.py
 """
 
 import os
@@ -21,7 +22,6 @@ if getattr(sys, 'frozen', False):
         os.environ['SSL_CERT_FILE'] = certifi.where()
         os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
     except:
-        # Fallback: disable SSL verification (not ideal but works)
         import urllib3
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -107,7 +107,6 @@ class DesktopPet:
                 img = Image.open(self.custom_image_path)
             else:
                 url = "https://media.tenor.com/Ot-v5CHE2TUAAAAM/yoojung-gif-kim-yoo-jung.gif"
-                # Disable SSL verification if running as EXE
                 verify_ssl = not getattr(sys, 'frozen', False)
                 response = requests.get(url, timeout=5, verify=verify_ssl)
                 img = Image.open(BytesIO(response.content))
@@ -338,6 +337,9 @@ class DesktopPet:
                 subprocess.Popen(['xdg-open', path])
         except:
             pass
+
+# ===== END OF PART 1 - COPY PART 2 NEXT =====
+# ===== PART 2 OF 3 - PASTE THIS AFTER PART 1 (UPDATED - BUG FIXED) =====
     
     def add_custom_url(self):
         name = simpledialog.askstring("Add URL", "Enter name:")
@@ -494,8 +496,6 @@ class DesktopPet:
 "what time is it?"
 
 Settings save automatically!""")
-
-# ===== PART 2 CONTINUES BELOW - COPY EVERYTHING FROM HERE DOWN =====
     
     def log_to_console(self, msg):
         self.console_buffer.append(msg)
@@ -615,72 +615,66 @@ Settings save automatically!""")
         if not self.chat_display:
             return
         
-        self.chat_display.config(state=tk.NORMAL)
+        # FIXED: Check if chat window still exists before writing
+        try:
+            if not self.chat_window or not self.chat_window.winfo_exists():
+                return
+        except:
+            return
         
-        if sender == 'user':
-            self.chat_display.insert(tk.END, "You: ", 'user')
-            self.chat_display.insert(tk.END, message + "\n\n")
-        elif sender == 'pet':
-            self.chat_display.insert(tk.END, "🤖 Pet: ", 'pet')
+        try:
+            self.chat_display.config(state=tk.NORMAL)
             
-            # Format the message with better styling
-            self.format_pet_message(message)
+            if sender == 'user':
+                self.chat_display.insert(tk.END, "You: ", 'user')
+                self.chat_display.insert(tk.END, message + "\n\n")
+            elif sender == 'pet':
+                self.chat_display.insert(tk.END, "🤖 Pet: ", 'pet')
+                self.format_pet_message(message)
+                self.chat_display.insert(tk.END, "\n")
+                self.chat_display.insert(tk.END, "─" * 60 + "\n\n", 'divider')
+            elif sender == 'searching':
+                self.chat_display.insert(tk.END, message + "\n", 'searching')
+            else:
+                self.chat_display.insert(tk.END, "→ ", 'system')
+                self.chat_display.insert(tk.END, message + "\n\n", 'system')
             
-            self.chat_display.insert(tk.END, "\n")
-            # Add a subtle divider
-            self.chat_display.insert(tk.END, "─" * 60 + "\n\n", 'divider')
-        elif sender == 'searching':
-            self.chat_display.insert(tk.END, message + "\n", 'searching')
-        else:
-            self.chat_display.insert(tk.END, "→ ", 'system')
-            self.chat_display.insert(tk.END, message + "\n\n", 'system')
-        
-        self.chat_display.config(state=tk.DISABLED)
-        self.chat_display.see(tk.END)
+            self.chat_display.config(state=tk.DISABLED)
+            self.chat_display.see(tk.END)
+        except tk.TclError:
+            # Window was closed during operation
+            pass
     
     def format_pet_message(self, message):
         """Format pet messages with better styling and ALL clickable links"""
         import time
         
-        # Split into lines
         lines = message.split('\n')
         
         for i, line in enumerate(lines):
             line_stripped = line.strip()
             
-            # Empty line
             if not line_stripped:
                 self.chat_display.insert(tk.END, "\n")
                 continue
             
-            # Check if this line is a source link
             if line_stripped.startswith('🔗 Source:'):
-                # Extract URL (everything after "🔗 Source: ")
                 url = line_stripped.replace('🔗 Source:', '').strip()
                 
                 if url:
-                    # Insert the label part
                     self.chat_display.insert(tk.END, "   🔗 Source: ", 'content')
                     
-                    # Insert the clickable URL part
                     link_start = self.chat_display.index(tk.INSERT)
                     self.chat_display.insert(tk.END, url)
                     link_end = self.chat_display.index(tk.INSERT)
                     
-                    # Create unique tag for this specific link
                     tag_name = f"clickable_link_{i}_{int(time.time() * 1000000)}"
                     
-                    # Apply the tag to just this URL
                     self.chat_display.tag_add(tag_name, link_start, link_end)
-                    
-                    # Configure tag styling
                     self.chat_display.tag_config(tag_name, foreground='#00a8fc', underline=True)
                     
-                    # Bind click event - CRITICAL: must use u=url to capture variable
                     self.chat_display.tag_bind(tag_name, '<Button-1>', 
                         lambda event, u=url: self.open_url_from_click(u))
-                    
-                    # Bind hover effects
                     self.chat_display.tag_bind(tag_name, '<Enter>', 
                         lambda event: self.chat_display.config(cursor='hand2'))
                     self.chat_display.tag_bind(tag_name, '<Leave>', 
@@ -689,18 +683,15 @@ Settings save automatically!""")
                     self.chat_display.insert(tk.END, "\n")
                     continue
             
-            # Check if it's a section header with emoji
-            if any(line_stripped.startswith(emoji) for emoji in ['📚', '💡', '🎬', '🎭', '🎪', '🎨', '🎯', '👤', '📅', '📍', '🤔', '✅', '🌤️', '📰', '📝']):
+            if any(line_stripped.startswith(emoji) for emoji in ['📚', '💡', '🎬', '🎭', '🎪', '🎨', '🎯', '👤', '📅', '📍', '🤔', '✅', '🌤️', '📰', '🔍']):
                 self.chat_display.insert(tk.END, line_stripped + "\n", 'pet')
             else:
-                # Regular content
                 self.chat_display.insert(tk.END, line_stripped + "\n", 'content')
     
     def open_url_from_click(self, url):
         """Open URL when clicked"""
         try:
             url = url.strip()
-            # Add https:// if not present
             if not url.startswith(('http://', 'https://')):
                 url = 'https://' + url
             webbrowser.open(url)
@@ -708,6 +699,9 @@ Settings save automatically!""")
         except Exception as e:
             self.log_to_console(f"Error opening URL: {e}")
             messagebox.showerror("Error", f"Could not open URL:\n{url}\n\nError: {e}")
+
+# ===== END OF PART 2 - COPY PART 3 NEXT =====
+# ===== PART 3 OF 3 (FINAL) - PASTE THIS AFTER PART 2 (UPDATED - BUG FIXED) =====
     
     def send_chat_message(self):
         msg = self.chat_input.get().strip()
@@ -724,7 +718,6 @@ Settings save automatically!""")
     def process_message(self, msg):
         msg_lower = msg.lower()
         
-        # Simple commands that don't need web search (must be EXACT matches or very specific)
         if msg_lower in ['joke', 'tell me a joke', 'tell a joke', 'make me laugh']:
             response = self.generate_pet_response(msg_lower)
         elif msg_lower in ['time', 'what time is it', 'whats the time', "what's the time", 'what time']:
@@ -748,7 +741,6 @@ Settings save automatically!""")
         elif msg_lower in ['bye', 'goodbye', 'see you', 'see ya', 'later']:
             response = self.generate_pet_response(msg_lower)
         else:
-            # Everything else gets web search
             self.root.after(0, lambda: self.add_chat_message('searching', "🔍 Searching the web..."))
             response = self.web_search_answer(msg)
         
@@ -757,20 +749,18 @@ Settings save automatically!""")
     def web_search_answer(self, query):
         """Search the web and provide intelligent interpretation"""
         try:
-            # Try Google first (best results)
             result = self.search_google(query)
             if result:
                 return self.interpret_search_result(query, result)
             
-            # Fallback to DuckDuckGo
             result = self.search_duckduckgo(query)
             if result:
                 return self.interpret_search_result(query, result)
             
-            # Final fallback to Wikipedia
-            result = self.search_wikipedia(query)
-            if result:
-                return self.interpret_search_result(query, result)
+            # Wikipedia disabled - it blocks automated requests
+            # result = self.search_wikipedia(query)
+            # if result:
+            #     return result
             
             return "I couldn't find specific information on that. Try rephrasing your question!"
             
@@ -782,7 +772,6 @@ Settings save automatically!""")
         """Interpret search results to give direct, conversational answers"""
         query_lower = query.lower()
         
-        # Split result into content and sources
         lines = raw_result.split('\n')
         content_lines = []
         source_lines = []
@@ -795,53 +784,30 @@ Settings save automatically!""")
         
         content = '\n'.join(content_lines).strip()
         
-        # Detect question type and format answer accordingly
-        
-        # WHO questions - extract names/people
         if any(word in query_lower for word in ['who is', 'who are', 'who was', 'who were', 'main cast', 'cast members', 'actors', 'starring', 'names of', 'name of']):
             if 'cast' in query_lower or 'actor' in query_lower or 'starring' in query_lower or 'names' in query_lower:
-                # For cast questions, present content directly without over-processing
                 response = f"🎬 {self.summarize_content(content, 400)}"
             else:
                 response = f"👤 {self.summarize_content(content, 300)}"
-        
-        # WHAT questions - extract definitions/explanations
         elif any(word in query_lower for word in ['what is', 'what are', 'what was', 'what does']):
             response = f"💡 {self.summarize_content(content, 300)}"
-        
-        # HOW questions - extract steps/methods
         elif query_lower.startswith('how to') or query_lower.startswith('how do'):
-            response = f"📝 {self.summarize_content(content, 350)}"
-        
-        # WHEN questions - extract dates/times
+            response = f"📍 {self.summarize_content(content, 350)}"
         elif any(word in query_lower for word in ['when is', 'when was', 'when did', 'when does']):
             response = f"📅 {self.summarize_content(content, 250)}"
-        
-        # WHERE questions - extract locations
         elif any(word in query_lower for word in ['where is', 'where are', 'where can']):
             response = f"📍 {self.summarize_content(content, 250)}"
-        
-        # WHY questions - extract reasons
         elif query_lower.startswith('why'):
             response = f"🤔 {self.summarize_content(content, 300)}"
-        
-        # REQUIREMENTS questions
         elif 'requirement' in query_lower or 'need' in query_lower:
             response = f"✅ {self.summarize_content(content, 350)}"
-        
-        # WEATHER queries
         elif 'weather' in query_lower:
             response = f"🌤️ {self.summarize_content(content, 200)}"
-        
-        # NEWS queries
         elif 'news' in query_lower or 'latest' in query_lower:
             response = f"📰 {self.summarize_content(content, 300)}"
-        
-        # Default: Smart summarization
         else:
             response = self.summarize_content(content, 250)
         
-        # Add sources at the end
         if source_lines:
             response += "\n\n" + "\n".join(source_lines)
         
@@ -849,29 +815,24 @@ Settings save automatically!""")
     
     def summarize_content(self, content, max_chars=250):
         """Intelligently summarize content to specified length"""
-        # Remove extra whitespace
         content = ' '.join(content.split())
         
-        # If content is already short enough, return as-is
         if len(content) <= max_chars:
             return content
         
-        # Try to cut at sentence boundary
         sentences = content.split('. ')
         summary = ""
         
         for sentence in sentences:
-            test_length = len(summary) + len(sentence) + 2  # +2 for ". "
+            test_length = len(summary) + len(sentence) + 2
             if test_length <= max_chars:
                 summary += sentence + ". "
             else:
                 break
         
-        # If we got at least one sentence, return it
         if summary and len(summary) > 50:
             return summary.strip()
         
-        # Otherwise, cut at word boundary near the limit
         truncated = content[:max_chars]
         last_space = truncated.rfind(' ')
         if last_space > 0:
@@ -881,9 +842,7 @@ Settings save automatically!""")
     
     def clean_html_text(self, text):
         """Clean HTML entities and tags from text"""
-        # Remove HTML tags
         text = re.sub(r'<[^>]+>', '', text)
-        # Replace common HTML entities
         text = text.replace('&quot;', '"')
         text = text.replace('&#x27;', "'")
         text = text.replace('&amp;', '&')
@@ -891,12 +850,11 @@ Settings save automatically!""")
         text = text.replace('&gt;', '>')
         text = text.replace('&#39;', "'")
         text = text.replace('&nbsp;', ' ')
-        # Remove extra whitespace
         text = re.sub(r'\s+', ' ', text)
         return text.strip()
     
     def search_google(self, query):
-        """Search using Google - gets COMPLETE answers with ALL links"""
+        """Search using Google"""
         try:
             clean_query = urllib.parse.quote_plus(query)
             search_url = f"https://www.google.com/search?q={clean_query}"
@@ -908,7 +866,6 @@ Settings save automatically!""")
             response = requests.get(search_url, headers=headers, timeout=10)
             html = response.text
             
-            # Multiple patterns for complete content
             snippet_patterns = [
                 r'<div class="[^"]*VwiC3b[^"]*"[^>]*>(.*?)</div>',
                 r'<span class="[^"]*aCOpRe[^"]*"[^>]*>(.*?)</span>',
@@ -919,11 +876,9 @@ Settings save automatically!""")
             for pattern in snippet_patterns:
                 all_snippets.extend(re.findall(pattern, html, re.DOTALL))
             
-            # Extract ALL URLs (not just the first one)
             url_pattern = r'<a href="/url\?q=(https?://[^&]+)'
             found_urls = re.findall(url_pattern, html)
             
-            # Get the longest/best snippet - NO TRUNCATION
             best_result = None
             best_length = 0
             
@@ -934,10 +889,8 @@ Settings save automatically!""")
                     best_length = len(clean_text)
             
             if best_result:
-                # Format with content and ALL source URLs
                 result_parts = [best_result]
                 
-                # Add up to 3 unique source URLs
                 seen_domains = set()
                 added_urls = 0
                 
@@ -947,7 +900,6 @@ Settings save automatically!""")
                     
                     clean_url = urllib.parse.unquote(url)
                     
-                    # Extract domain to avoid duplicates
                     domain_match = re.search(r'https?://([^/]+)', clean_url)
                     if domain_match:
                         domain = domain_match.group(1)
@@ -965,7 +917,7 @@ Settings save automatically!""")
             return None
     
     def search_duckduckgo(self, query):
-        """Search using DuckDuckGo - gets COMPLETE answers with ALL links"""
+        """Search using DuckDuckGo"""
         try:
             clean_query = urllib.parse.quote_plus(query)
             search_url = f"https://html.duckduckgo.com/html/?q={clean_query}"
@@ -977,7 +929,6 @@ Settings save automatically!""")
             response = requests.get(search_url, headers=headers, timeout=10)
             html = response.text
             
-            # Extract snippets
             snippet_patterns = [
                 r'class="result__snippet"[^>]*>(.*?)</a>',
                 r'class="result__body"[^>]*>(.*?)</div>',
@@ -987,10 +938,8 @@ Settings save automatically!""")
             for pattern in snippet_patterns:
                 all_snippets.extend(re.findall(pattern, html, re.DOTALL))
             
-            # Extract ALL URLs
             url_matches = re.findall(r'class="result__url"[^>]*>(.*?)</a>', html, re.DOTALL)
             
-            # Get longest snippet - NO TRUNCATION
             best_result = None
             best_length = 0
             
@@ -1003,11 +952,9 @@ Settings save automatically!""")
             if best_result:
                 result_parts = [best_result]
                 
-                # Add up to 3 source URLs
                 for i, url_html in enumerate(url_matches[:3]):
                     clean_url = self.clean_html_text(url_html)
                     if clean_url:
-                        # Make sure it's a proper URL
                         if not clean_url.startswith(('http://', 'https://')):
                             clean_url = 'https://' + clean_url
                         result_parts.append(f"🔗 Source: {clean_url}")
@@ -1021,37 +968,10 @@ Settings save automatically!""")
             return None
     
     def search_wikipedia(self, query):
-        """Fallback Wikipedia search - with FULL content"""
-        try:
-            clean_query = urllib.parse.quote_plus(query)
-            wiki_url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={clean_query}&format=json&utf8=1"
-            
-            response = requests.get(wiki_url, timeout=10)
-            data = response.json()
-            
-            if data.get('query', {}).get('search'):
-                result = data['query']['search'][0]
-                title = result['title']
-                page_id = result['pageid']
-                
-                # Get FULL extract
-                extract_url = f"https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&explaintext&pageids={page_id}&format=json"
-                extract_response = requests.get(extract_url, timeout=10)
-                extract_data = extract_response.json()
-                
-                page_data = extract_data.get('query', {}).get('pages', {}).get(str(page_id), {})
-                full_text = page_data.get('extract', '')
-                
-                if full_text:
-                    page_url = f"https://en.wikipedia.org/wiki/{urllib.parse.quote(title.replace(' ', '_'))}"
-                    
-                    return f"📚 {title}\n\n{full_text}\n🔗 Source: {page_url}"
-            
-            return "I couldn't find specific information on that. Try rephrasing your question!"
-            
-        except Exception as e:
-            self.log_to_console(f"Wikipedia error: {e}")
-            return "Sorry, I'm having trouble accessing search services right now."
+        """Fallback Wikipedia search - DISABLED (API blocks automated requests)"""
+        # Wikipedia API blocks automated requests, so we skip it
+        self.log_to_console("Wikipedia search skipped (API restrictions)")
+        return None
     
     def generate_pet_response(self, message):
         """Generate response for built-in commands"""
@@ -1177,4 +1097,4 @@ if __name__ == "__main__":
     pet.log_to_console(f"Loaded {len(pet.custom_shortcuts)} shortcuts")
     pet.log_to_console(f"Loaded {len(pet.custom_urls)} URLs")
 
-
+# ===== END OF PART 3 - SCRIPT COMPLETE! =====
