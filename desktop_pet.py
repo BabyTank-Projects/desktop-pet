@@ -5,11 +5,16 @@ Features:
 - Intuitive chat interface with suggestions
 - Smart response generation
 - All original features preserved
-
-INSTRUCTIONS:
-1. Copy this entire PART 1 file and save as desktop_pet.py
-2. Then copy PART 2 below and paste it at the bottom of desktop_pet.py
 """
+
+import os
+import sys
+
+# Fix SSL certificates for PyInstaller builds
+if getattr(sys, 'frozen', False):
+    import certifi
+    os.environ['SSL_CERT_FILE'] = certifi.where()
+    os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
 
 import tkinter as tk
 from tkinter import Menu as TkMenu, simpledialog, messagebox, filedialog
@@ -18,7 +23,6 @@ import requests
 from io import BytesIO
 import subprocess
 import platform
-import os
 import json
 import webbrowser
 import datetime
