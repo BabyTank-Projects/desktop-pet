@@ -1,54 +1,44 @@
-name: Build Desktop Pet
+# -*- mode: python ; coding: utf-8 -*-
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:
-  release:
-    types: [created]
+import sys
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
-permissions:
-  contents: write
+# Collect certifi data files
+certifi_datas = collect_data_files('certifi')
 
-jobs:
-  build:
-    runs-on: windows-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pyinstaller pillow requests certifi
-    
-    - name: Generate spec file
-      run: |
-        python -c "import certifi; print(f'Certifi location: {certifi.where()}')"
-        
-    - name: Build EXE with SSL support
-      run: |
-        pyinstaller DesktopPet.spec
-    
-    - name: Upload build artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: DesktopPet-Windows
-        path: dist/DesktopPet.exe
-        retention-days: 30
-    
-    - name: Upload to Release (only on release)
-      if: github.event_name == 'release'
-      uses: softprops/action-gh-release@v1
-      with:
-        files: dist/DesktopPet.exe
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+a = Analysis(
+    ['desktop_pet.py'],
+    pathex=[],
+    binaries=[],
+    datas=certifi_datas,
+    hiddenimports=['certifi', 'certifi.core'],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[],
+    noarchive=False,
+)
+
+pyz = PYZ(a.pure)
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.datas,
+    [],
+    name='DesktopPet',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=False,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon=None,
+)
