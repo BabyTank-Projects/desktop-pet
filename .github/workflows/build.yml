@@ -1,10 +1,17 @@
-name: Build and Release Desktop Pet
+name: Build Desktop Pet
+
 on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
   release:
     types: [created]
-  workflow_dispatch:
+
 permissions:
   contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -23,21 +30,21 @@ jobs:
         python -m pip install --upgrade pip
         pip install pyinstaller pillow requests certifi
     
-    - name: Build EXE
+    - name: Build EXE with SSL support
       run: |
         pyinstaller --onefile --windowed --name=DesktopPet --hidden-import=certifi --collect-all=certifi desktop_pet.py
     
-    - name: Upload artifact (for manual runs)
-      if: github.event_name == 'workflow_dispatch'
+    - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
-        name: DesktopPet-Build
-        path: ./dist/DesktopPet.exe
+        name: DesktopPet-Windows
+        path: dist/DesktopPet.exe
+        retention-days: 30
     
-    - name: Upload Release Asset (for releases)
+    - name: Upload to Release (only on release)
       if: github.event_name == 'release'
       uses: softprops/action-gh-release@v1
       with:
-        files: ./dist/DesktopPet.exe
+        files: dist/DesktopPet.exe
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
