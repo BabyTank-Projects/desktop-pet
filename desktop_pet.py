@@ -1,11 +1,10 @@
 """
-Enhanced Desktop Pet with AI Chat and Web Search - PART 1 OF 3 (EXE FIXED)
+Enhanced Desktop Pet with AI Chat and Web Search - PART 1 OF 3
 Features:
 - Web search integration for current information
 - Intuitive chat interface with suggestions
 - Smart response generation
 - All original features preserved
-- FIXED: Works properly as .exe file
 
 INSTRUCTIONS:
 1. Copy PART 1, save as desktop_pet.py
@@ -16,18 +15,15 @@ INSTRUCTIONS:
 import os
 import sys
 
-# FIX FOR EXE: Disable SSL verification completely for compiled executables
+# Fix SSL certificates for PyInstaller builds
 if getattr(sys, 'frozen', False):
-    # Running as compiled exe
-    import ssl
-    ssl._create_default_https_context = ssl._create_unverified_context
-    
-    # Also disable urllib3 warnings
     try:
+        import certifi
+        os.environ['SSL_CERT_FILE'] = certifi.where()
+        os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
+    except:
         import urllib3
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    except:
-        pass
 
 import tkinter as tk
 from tkinter import Menu as TkMenu, simpledialog, messagebox, filedialog
@@ -57,9 +53,6 @@ class DesktopPet:
         self.offset_x = 0
         self.offset_y = 0
         self.dragging = False
-        
-        # FIX FOR EXE: Detect if running as exe
-        self.is_exe = getattr(sys, 'frozen', False)
         
         self.app_data_dir = self.get_app_data_directory()
         self.shortcuts_file = os.path.join(self.app_data_dir, 'desktop_pet_shortcuts.json')
@@ -114,8 +107,8 @@ class DesktopPet:
                 img = Image.open(self.custom_image_path)
             else:
                 url = "https://media.tenor.com/Ot-v5CHE2TUAAAAM/yoojung-gif-kim-yoo-jung.gif"
-                # FIX FOR EXE: Always disable SSL verification
-                response = requests.get(url, timeout=10, verify=False)
+                verify_ssl = not getattr(sys, 'frozen', False)
+                response = requests.get(url, timeout=5, verify=verify_ssl)
                 img = Image.open(BytesIO(response.content))
             
             self.frames = []
@@ -708,7 +701,7 @@ Settings save automatically!""")
             messagebox.showerror("Error", f"Could not open URL:\n{url}\n\nError: {e}")
 
 # ===== END OF PART 2 - COPY PART 3 NEXT =====
-# ===== PART 3 OF 3 (FINAL) - PASTE THIS AFTER PART 2 (UPDATED - BUG FIXED) =====
+# ===== PART 3 OF 3 (FINAL) - PASTE THIS AFTER PART 2 (FULLY FIXED) =====
     
     def send_chat_message(self):
         msg = self.chat_input.get().strip()
@@ -748,10 +741,18 @@ Settings save automatically!""")
         elif msg_lower in ['bye', 'goodbye', 'see you', 'see ya', 'later']:
             response = self.generate_pet_response(msg_lower)
         else:
-            self.root.after(0, lambda: self.add_chat_message('searching', "🔍 Searching the web..."))
+            # Show searching message
+            try:
+                self.root.after(0, lambda: self.add_chat_message('searching', "🔍 Searching the web..."))
+            except:
+                pass
             response = self.web_search_answer(msg)
         
-        self.root.after(0, lambda: self.add_chat_message('pet', response))
+        # Send response back to main thread
+        try:
+            self.root.after(0, lambda r=response: self.add_chat_message('pet', r))
+        except:
+            pass
     
     def web_search_answer(self, query):
         """Search the web and provide intelligent interpretation"""
@@ -763,11 +764,6 @@ Settings save automatically!""")
             result = self.search_duckduckgo(query)
             if result:
                 return self.interpret_search_result(query, result)
-            
-            # Wikipedia disabled - it blocks automated requests
-            # result = self.search_wikipedia(query)
-            # if result:
-            #     return result
             
             return "I couldn't find specific information on that. Try rephrasing your question!"
             
@@ -799,7 +795,7 @@ Settings save automatically!""")
         elif any(word in query_lower for word in ['what is', 'what are', 'what was', 'what does']):
             response = f"💡 {self.summarize_content(content, 300)}"
         elif query_lower.startswith('how to') or query_lower.startswith('how do'):
-            response = f"📍 {self.summarize_content(content, 350)}"
+            response = f"📝 {self.summarize_content(content, 350)}"
         elif any(word in query_lower for word in ['when is', 'when was', 'when did', 'when does']):
             response = f"📅 {self.summarize_content(content, 250)}"
         elif any(word in query_lower for word in ['where is', 'where are', 'where can']):
@@ -870,7 +866,8 @@ Settings save automatically!""")
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             }
             
-            response = requests.get(search_url, headers=headers, timeout=10)
+            # FIX: Always disable SSL verification
+            response = requests.get(search_url, headers=headers, timeout=10, verify=False)
             html = response.text
             
             snippet_patterns = [
@@ -933,7 +930,8 @@ Settings save automatically!""")
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             }
             
-            response = requests.get(search_url, headers=headers, timeout=10)
+            # FIX: Always disable SSL verification
+            response = requests.get(search_url, headers=headers, timeout=10, verify=False)
             html = response.text
             
             snippet_patterns = [
@@ -973,12 +971,6 @@ Settings save automatically!""")
         except Exception as e:
             self.log_to_console(f"DuckDuckGo search error: {e}")
             return None
-    
-    def search_wikipedia(self, query):
-        """Fallback Wikipedia search - DISABLED (API blocks automated requests)"""
-        # Wikipedia API blocks automated requests, so we skip it
-        self.log_to_console("Wikipedia search skipped (API restrictions)")
-        return None
     
     def generate_pet_response(self, message):
         """Generate response for built-in commands"""
@@ -1105,4 +1097,3 @@ if __name__ == "__main__":
     pet.log_to_console(f"Loaded {len(pet.custom_urls)} URLs")
 
 # ===== END OF PART 3 - SCRIPT COMPLETE! =====
-
