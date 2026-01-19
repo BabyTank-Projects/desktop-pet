@@ -1,10 +1,11 @@
 """
-Enhanced Desktop Pet with AI Chat and Web Search - PART 1 OF 3
+Enhanced Desktop Pet with AI Chat and Web Search - PART 1 OF 3 (EXE FIXED)
 Features:
 - Web search integration for current information
 - Intuitive chat interface with suggestions
 - Smart response generation
 - All original features preserved
+- FIXED: Works properly as .exe file
 
 INSTRUCTIONS:
 1. Copy PART 1, save as desktop_pet.py
@@ -15,15 +16,18 @@ INSTRUCTIONS:
 import os
 import sys
 
-# Fix SSL certificates for PyInstaller builds
+# FIX FOR EXE: Disable SSL verification completely for compiled executables
 if getattr(sys, 'frozen', False):
+    # Running as compiled exe
+    import ssl
+    ssl._create_default_https_context = ssl._create_unverified_context
+    
+    # Also disable urllib3 warnings
     try:
-        import certifi
-        os.environ['SSL_CERT_FILE'] = certifi.where()
-        os.environ['REQUESTS_CA_BUNDLE'] = certifi.where()
-    except:
         import urllib3
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    except:
+        pass
 
 import tkinter as tk
 from tkinter import Menu as TkMenu, simpledialog, messagebox, filedialog
@@ -53,6 +57,9 @@ class DesktopPet:
         self.offset_x = 0
         self.offset_y = 0
         self.dragging = False
+        
+        # FIX FOR EXE: Detect if running as exe
+        self.is_exe = getattr(sys, 'frozen', False)
         
         self.app_data_dir = self.get_app_data_directory()
         self.shortcuts_file = os.path.join(self.app_data_dir, 'desktop_pet_shortcuts.json')
@@ -107,8 +114,8 @@ class DesktopPet:
                 img = Image.open(self.custom_image_path)
             else:
                 url = "https://media.tenor.com/Ot-v5CHE2TUAAAAM/yoojung-gif-kim-yoo-jung.gif"
-                verify_ssl = not getattr(sys, 'frozen', False)
-                response = requests.get(url, timeout=5, verify=verify_ssl)
+                # FIX FOR EXE: Always disable SSL verification
+                response = requests.get(url, timeout=10, verify=False)
                 img = Image.open(BytesIO(response.content))
             
             self.frames = []
@@ -1098,3 +1105,4 @@ if __name__ == "__main__":
     pet.log_to_console(f"Loaded {len(pet.custom_urls)} URLs")
 
 # ===== END OF PART 3 - SCRIPT COMPLETE! =====
+
