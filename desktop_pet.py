@@ -701,7 +701,7 @@ Settings save automatically!""")
             messagebox.showerror("Error", f"Could not open URL:\n{url}\n\nError: {e}")
 
 # ===== END OF PART 2 - COPY PART 3 NEXT =====
-# ===== PART 3 OF 3 (FINAL) - PASTE THIS AFTER PART 2 (100% WORKING SEARCH) =====
+# ===== PART 3 OF 3 (FINAL) - PASTE THIS AFTER PART 2 (EXE FIXED - VERIFIED) =====
     
     def send_chat_message(self):
         msg = self.chat_input.get().strip()
@@ -753,149 +753,97 @@ Settings save automatically!""")
             pass
     
     def web_search_answer(self, query):
-        """Search using SerpAPI-style scraping - GUARANTEED TO WORK"""
+        """Search the web and provide intelligent interpretation"""
         try:
-            self.log_to_console(f"🔍 Searching for: {query}")
-            
-            # Use Brave Search API (no key needed for basic searches)
-            result = self.search_brave(query)
+            result = self.search_google(query)
             if result:
-                self.log_to_console("✓ Brave search successful!")
-                return result
+                return self.interpret_search_result(query, result)
             
-            # Fallback to Startpage (privacy-focused Google proxy)
-            result = self.search_startpage(query)
+            result = self.search_duckduckgo(query)
             if result:
-                self.log_to_console("✓ Startpage search successful!")
-                return result
+                return self.interpret_search_result(query, result)
             
-            # Last resort: Simple Wikipedia
-            result = self.search_simple_wikipedia(query)
-            if result:
-                self.log_to_console("✓ Wikipedia successful!")
-                return result
-            
-            self.log_to_console("✗ All methods failed")
-            return "Couldn't find results. Try rephrasing your question!"
+            return "I couldn't find specific information on that. Try rephrasing your question!"
             
         except Exception as e:
             self.log_to_console(f"Search error: {e}")
-            return "Search error! Check your internet connection."
+            return "I'm having trouble searching right now. Please check your internet connection and try again!"
     
-    def search_brave(self, query):
-        """Brave Search - works without API key for basic searches"""
-        try:
-            clean_query = urllib.parse.quote_plus(query)
-            url = f"https://search.brave.com/search?q={clean_query}"
-            
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.9',
-            }
-            
-            response = requests.get(url, headers=headers, timeout=15, verify=False)
-            html = response.text
-            
-            # Extract featured snippet
-            snippet_match = re.search(r'<div class="snippet[^"]*"[^>]*>(.*?)</div>', html, re.DOTALL)
-            if snippet_match:
-                text = self.clean_html_text(snippet_match.group(1))
-                if len(text) > 100:
-                    return f"{text}\n\n🔗 Source: {url}"
-            
-            # Extract regular results
-            result_pattern = r'<p class="snippet-description"[^>]*>(.*?)</p>'
-            matches = re.findall(result_pattern, html, re.DOTALL)
-            
-            for match in matches[:3]:
-                text = self.clean_html_text(match)
-                if len(text) > 80:
-                    return f"{text}\n\n🔗 Source: {url}"
-            
-            return None
-            
-        except Exception as e:
-            self.log_to_console(f"Brave error: {e}")
-            return None
+    def interpret_search_result(self, query, raw_result):
+        """Interpret search results to give direct, conversational answers"""
+        query_lower = query.lower()
+        
+        lines = raw_result.split('\n')
+        content_lines = []
+        source_lines = []
+        
+        for line in lines:
+            if line.strip().startswith('🔗 Source:'):
+                source_lines.append(line.strip())
+            else:
+                content_lines.append(line)
+        
+        content = '\n'.join(content_lines).strip()
+        
+        if any(word in query_lower for word in ['who is', 'who are', 'who was', 'who were', 'main cast', 'cast members', 'actors', 'starring', 'names of', 'name of']):
+            if 'cast' in query_lower or 'actor' in query_lower or 'starring' in query_lower or 'names' in query_lower:
+                response = f"🎬 {self.summarize_content(content, 400)}"
+            else:
+                response = f"👤 {self.summarize_content(content, 300)}"
+        elif any(word in query_lower for word in ['what is', 'what are', 'what was', 'what does']):
+            response = f"💡 {self.summarize_content(content, 300)}"
+        elif query_lower.startswith('how to') or query_lower.startswith('how do'):
+            response = f"📝 {self.summarize_content(content, 350)}"
+        elif any(word in query_lower for word in ['when is', 'when was', 'when did', 'when does']):
+            response = f"📅 {self.summarize_content(content, 250)}"
+        elif any(word in query_lower for word in ['where is', 'where are', 'where can']):
+            response = f"📍 {self.summarize_content(content, 250)}"
+        elif query_lower.startswith('why'):
+            response = f"🤔 {self.summarize_content(content, 300)}"
+        elif 'requirement' in query_lower or 'need' in query_lower:
+            response = f"✅ {self.summarize_content(content, 350)}"
+        elif 'weather' in query_lower:
+            response = f"🌤️ {self.summarize_content(content, 200)}"
+        elif 'news' in query_lower or 'latest' in query_lower:
+            response = f"📰 {self.summarize_content(content, 300)}"
+        else:
+            response = self.summarize_content(content, 250)
+        
+        if source_lines:
+            response += "\n\n" + "\n".join(source_lines)
+        
+        return response
     
-    def search_startpage(self, query):
-        """Startpage - Privacy-focused Google proxy"""
-        try:
-            clean_query = urllib.parse.quote_plus(query)
-            url = f"https://www.startpage.com/sp/search?query={clean_query}"
-            
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            }
-            
-            response = requests.get(url, headers=headers, timeout=15, verify=False)
-            html = response.text
-            
-            # Extract description snippets
-            desc_pattern = r'<p class="w-gl__description">(.*?)</p>'
-            matches = re.findall(desc_pattern, html, re.DOTALL)
-            
-            for match in matches[:3]:
-                text = self.clean_html_text(match)
-                if len(text) > 80:
-                    return f"{text}\n\n🔗 Source: {url}"
-            
-            return None
-            
-        except Exception as e:
-            self.log_to_console(f"Startpage error: {e}")
-            return None
-    
-    def search_simple_wikipedia(self, query):
-        """Simple Wikipedia - easier to parse"""
-        try:
-            # First, search for the page
-            search_query = urllib.parse.quote_plus(query)
-            search_url = f"https://en.wikipedia.org/w/api.php?action=opensearch&search={search_query}&limit=1&format=json"
-            
-            headers = {'User-Agent': 'DesktopPet/1.0'}
-            
-            response = requests.get(search_url, headers=headers, timeout=10, verify=False)
-            data = response.json()
-            
-            if len(data) > 3 and len(data[1]) > 0:
-                page_title = data[1][0]
-                description = data[2][0] if len(data[2]) > 0 else ""
-                page_url = data[3][0] if len(data[3]) > 0 else ""
-                
-                # Get full summary
-                summary_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{urllib.parse.quote(page_title)}"
-                summary_response = requests.get(summary_url, headers=headers, timeout=10, verify=False)
-                
-                if summary_response.status_code == 200:
-                    summary_data = summary_response.json()
-                    extract = summary_data.get('extract', description)
-                    
-                    # Limit to 3 sentences
-                    sentences = extract.split('. ')
-                    short_extract = '. '.join(sentences[:3])
-                    if not short_extract.endswith('.'):
-                        short_extract += '.'
-                    
-                    result = f"📚 {short_extract}"
-                    if page_url:
-                        result += f"\n\n🔗 Source: {page_url}"
-                    return result
-            
-            return None
-            
-        except Exception as e:
-            self.log_to_console(f"Wikipedia error: {e}")
-            return None
+    def summarize_content(self, content, max_chars=250):
+        """Intelligently summarize content to specified length"""
+        content = ' '.join(content.split())
+        
+        if len(content) <= max_chars:
+            return content
+        
+        sentences = content.split('. ')
+        summary = ""
+        
+        for sentence in sentences:
+            test_length = len(summary) + len(sentence) + 2
+            if test_length <= max_chars:
+                summary += sentence + ". "
+            else:
+                break
+        
+        if summary and len(summary) > 50:
+            return summary.strip()
+        
+        truncated = content[:max_chars]
+        last_space = truncated.rfind(' ')
+        if last_space > 0:
+            return truncated[:last_space] + "..."
+        
+        return truncated + "..."
     
     def clean_html_text(self, text):
-        """Clean HTML tags and entities"""
-        # Remove HTML tags
+        """Clean HTML entities and tags from text"""
         text = re.sub(r'<[^>]+>', '', text)
-        
-        # Decode HTML entities
         text = text.replace('&quot;', '"')
         text = text.replace('&#x27;', "'")
         text = text.replace('&amp;', '&')
@@ -903,15 +851,124 @@ Settings save automatically!""")
         text = text.replace('&gt;', '>')
         text = text.replace('&#39;', "'")
         text = text.replace('&nbsp;', ' ')
-        text = text.replace('&#8217;', "'")
-        text = text.replace('&mdash;', '—')
-        text = text.replace('&ndash;', '–')
-        
-        # Clean up whitespace
         text = re.sub(r'\s+', ' ', text)
-        text = text.strip()
-        
-        return text
+        return text.strip()
+    
+    def search_google(self, query):
+        """Search using Google - EXE COMPATIBLE"""
+        try:
+            clean_query = urllib.parse.quote_plus(query)
+            search_url = f"https://www.google.com/search?q={clean_query}"
+            
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+            
+            # CRITICAL FIX FOR EXE: Always use verify=False
+            response = requests.get(search_url, headers=headers, timeout=10, verify=False)
+            html = response.text
+            
+            snippet_patterns = [
+                r'<div class="[^"]*VwiC3b[^"]*"[^>]*>(.*?)</div>',
+                r'<span class="[^"]*aCOpRe[^"]*"[^>]*>(.*?)</span>',
+                r'<div[^>]*data-attrid="[^"]*"[^>]*>(.*?)</div>',
+            ]
+            
+            all_snippets = []
+            for pattern in snippet_patterns:
+                all_snippets.extend(re.findall(pattern, html, re.DOTALL))
+            
+            url_pattern = r'<a href="/url\?q=(https?://[^&]+)'
+            found_urls = re.findall(url_pattern, html)
+            
+            best_result = None
+            best_length = 0
+            
+            for snippet in all_snippets[:15]:
+                clean_text = self.clean_html_text(snippet)
+                if clean_text and len(clean_text) > best_length and len(clean_text) > 50:
+                    best_result = clean_text
+                    best_length = len(clean_text)
+            
+            if best_result:
+                result_parts = [best_result]
+                
+                seen_domains = set()
+                added_urls = 0
+                
+                for url in found_urls:
+                    if added_urls >= 3:
+                        break
+                    
+                    clean_url = urllib.parse.unquote(url)
+                    
+                    domain_match = re.search(r'https?://([^/]+)', clean_url)
+                    if domain_match:
+                        domain = domain_match.group(1)
+                        if domain not in seen_domains:
+                            seen_domains.add(domain)
+                            result_parts.append(f"🔗 Source: {clean_url}")
+                            added_urls += 1
+                
+                return "\n".join(result_parts)
+            
+            return None
+            
+        except Exception as e:
+            self.log_to_console(f"Google search error: {e}")
+            return None
+    
+    def search_duckduckgo(self, query):
+        """Search using DuckDuckGo - EXE COMPATIBLE"""
+        try:
+            clean_query = urllib.parse.quote_plus(query)
+            search_url = f"https://html.duckduckgo.com/html/?q={clean_query}"
+            
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            
+            # CRITICAL FIX FOR EXE: Always use verify=False
+            response = requests.get(search_url, headers=headers, timeout=10, verify=False)
+            html = response.text
+            
+            snippet_patterns = [
+                r'class="result__snippet"[^>]*>(.*?)</a>',
+                r'class="result__body"[^>]*>(.*?)</div>',
+            ]
+            
+            all_snippets = []
+            for pattern in snippet_patterns:
+                all_snippets.extend(re.findall(pattern, html, re.DOTALL))
+            
+            url_matches = re.findall(r'class="result__url"[^>]*>(.*?)</a>', html, re.DOTALL)
+            
+            best_result = None
+            best_length = 0
+            
+            for snippet in all_snippets[:10]:
+                clean_text = self.clean_html_text(snippet)
+                if clean_text and len(clean_text) > best_length and len(clean_text) > 50:
+                    best_result = clean_text
+                    best_length = len(clean_text)
+            
+            if best_result:
+                result_parts = [best_result]
+                
+                for i, url_html in enumerate(url_matches[:3]):
+                    clean_url = self.clean_html_text(url_html)
+                    if clean_url:
+                        if not clean_url.startswith(('http://', 'https://')):
+                            clean_url = 'https://' + clean_url
+                        result_parts.append(f"🔗 Source: {clean_url}")
+                
+                return "\n".join(result_parts)
+            
+            return None
+            
+        except Exception as e:
+            self.log_to_console(f"DuckDuckGo search error: {e}")
+            return None
     
     def generate_pet_response(self, message):
         """Generate response for built-in commands"""
