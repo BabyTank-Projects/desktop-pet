@@ -30,9 +30,13 @@ jobs:
         python -m pip install --upgrade pip
         pip install pyinstaller pillow requests certifi
     
+    - name: Generate spec file
+      run: |
+        python -c "import certifi; print(f'Certifi location: {certifi.where()}')"
+        
     - name: Build EXE with SSL support
       run: |
-        pyinstaller --onefile --windowed --name=DesktopPet --hidden-import=certifi --collect-all=certifi desktop_pet.py
+        pyinstaller DesktopPet.spec
     
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
